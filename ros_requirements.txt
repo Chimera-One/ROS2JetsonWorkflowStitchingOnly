@@ -1,0 +1,15 @@
+huggingface_hub==0.34.4
+matplotlib==3.5.1
+mobile_sam==1.0
+numpy==2.3.3
+Pillow==9.0.1
+Pillow==11.3.0
+pycuda==2025.1.2
+rclpy==3.3.17
+segment_anything==1.0
+setuptools==80.9.0
+setuptools==59.6.0
+std_msgs==4.9.0
+tensorrt==10.3.0
+torch==2.8.0
+torch_tensorrt==2.8.0+cu126
