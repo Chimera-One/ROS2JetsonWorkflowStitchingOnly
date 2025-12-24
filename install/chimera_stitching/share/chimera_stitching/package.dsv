@@ -1,0 +1,6 @@
+source;share/chimera_stitching/hook/pythonpath.ps1
+source;share/chimera_stitching/hook/pythonpath.dsv
+source;share/chimera_stitching/hook/pythonpath.sh
+source;share/chimera_stitching/hook/ament_prefix_path.ps1
+source;share/chimera_stitching/hook/ament_prefix_path.dsv
+source;share/chimera_stitching/hook/ament_prefix_path.sh

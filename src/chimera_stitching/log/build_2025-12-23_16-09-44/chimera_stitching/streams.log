@@ -1,0 +1,37 @@
+[2.739s] Invoking command in '/home/chimera/ros2_ws/src/chimera_stitching': PYTHONPATH=/home/chimera/ros2_ws/src/chimera_stitching/build/chimera_stitching/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/chimera/ros2_ws/src/chimera_stitching/install/chimera_stitching/lib/python3.10/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base build/chimera_stitching build --build-base /home/chimera/ros2_ws/src/chimera_stitching/build/chimera_stitching/build install --record /home/chimera/ros2_ws/src/chimera_stitching/build/chimera_stitching/install.log --single-version-externally-managed install_data
+[3.570s] running egg_info
+[3.632s] creating build/chimera_stitching/chimera_stitching.egg-info
+[3.632s] writing build/chimera_stitching/chimera_stitching.egg-info/PKG-INFO
+[3.634s] writing dependency_links to build/chimera_stitching/chimera_stitching.egg-info/dependency_links.txt
+[3.635s] writing entry points to build/chimera_stitching/chimera_stitching.egg-info/entry_points.txt
+[3.635s] writing requirements to build/chimera_stitching/chimera_stitching.egg-info/requires.txt
+[3.636s] writing top-level names to build/chimera_stitching/chimera_stitching.egg-info/top_level.txt
+[3.636s] writing manifest file 'build/chimera_stitching/chimera_stitching.egg-info/SOURCES.txt'
+[3.767s] reading manifest file 'build/chimera_stitching/chimera_stitching.egg-info/SOURCES.txt'
+[3.767s] adding license file 'LICENSE'
+[3.770s] writing manifest file 'build/chimera_stitching/chimera_stitching.egg-info/SOURCES.txt'
+[3.770s] running build
+[3.770s] running build_py
+[3.771s] creating /home/chimera/ros2_ws/src/chimera_stitching/build/chimera_stitching/build/lib/chimera_stitching
+[3.771s] copying chimera_stitching/communication.py -> /home/chimera/ros2_ws/src/chimera_stitching/build/chimera_stitching/build/lib/chimera_stitching
+[3.774s] copying chimera_stitching/stitching.py -> /home/chimera/ros2_ws/src/chimera_stitching/build/chimera_stitching/build/lib/chimera_stitching
+[3.775s] copying chimera_stitching/__init__.py -> /home/chimera/ros2_ws/src/chimera_stitching/build/chimera_stitching/build/lib/chimera_stitching
+[3.775s] running install
+[3.787s] running install_lib
+[3.850s] creating /home/chimera/ros2_ws/src/chimera_stitching/install/chimera_stitching/lib/python3.10/site-packages/chimera_stitching
+[3.850s] copying /home/chimera/ros2_ws/src/chimera_stitching/build/chimera_stitching/build/lib/chimera_stitching/communication.py -> /home/chimera/ros2_ws/src/chimera_stitching/install/chimera_stitching/lib/python3.10/site-packages/chimera_stitching
+[3.851s] copying /home/chimera/ros2_ws/src/chimera_stitching/build/chimera_stitching/build/lib/chimera_stitching/stitching.py -> /home/chimera/ros2_ws/src/chimera_stitching/install/chimera_stitching/lib/python3.10/site-packages/chimera_stitching
+[3.851s] copying /home/chimera/ros2_ws/src/chimera_stitching/build/chimera_stitching/build/lib/chimera_stitching/__init__.py -> /home/chimera/ros2_ws/src/chimera_stitching/install/chimera_stitching/lib/python3.10/site-packages/chimera_stitching
+[3.853s] byte-compiling /home/chimera/ros2_ws/src/chimera_stitching/install/chimera_stitching/lib/python3.10/site-packages/chimera_stitching/communication.py to communication.cpython-310.pyc
+[3.866s] byte-compiling /home/chimera/ros2_ws/src/chimera_stitching/install/chimera_stitching/lib/python3.10/site-packages/chimera_stitching/stitching.py to stitching.cpython-310.pyc
+[3.872s] byte-compiling /home/chimera/ros2_ws/src/chimera_stitching/install/chimera_stitching/lib/python3.10/site-packages/chimera_stitching/__init__.py to __init__.cpython-310.pyc
+[3.873s] running install_data
+[3.873s] creating /home/chimera/ros2_ws/src/chimera_stitching/install/chimera_stitching/share/ament_index/resource_index/packages
+[3.874s] copying resource/chimera_stitching -> /home/chimera/ros2_ws/src/chimera_stitching/install/chimera_stitching/share/ament_index/resource_index/packages
+[3.875s] copying package.xml -> /home/chimera/ros2_ws/src/chimera_stitching/install/chimera_stitching/share/chimera_stitching
+[3.875s] running install_egg_info
+[3.942s] Copying build/chimera_stitching/chimera_stitching.egg-info to /home/chimera/ros2_ws/src/chimera_stitching/install/chimera_stitching/lib/python3.10/site-packages/chimera_stitching-0.0.0-py3.10.egg-info
+[3.944s] running install_scripts
+[4.420s] Installing stitching script to /home/chimera/ros2_ws/src/chimera_stitching/install/chimera_stitching/lib/chimera_stitching
+[4.421s] writing list of installed files to '/home/chimera/ros2_ws/src/chimera_stitching/build/chimera_stitching/install.log'
+[4.510s] Invoked command in '/home/chimera/ros2_ws/src/chimera_stitching' returned '0': PYTHONPATH=/home/chimera/ros2_ws/src/chimera_stitching/build/chimera_stitching/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/chimera/ros2_ws/src/chimera_stitching/install/chimera_stitching/lib/python3.10/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base build/chimera_stitching build --build-base /home/chimera/ros2_ws/src/chimera_stitching/build/chimera_stitching/build install --record /home/chimera/ros2_ws/src/chimera_stitching/build/chimera_stitching/install.log --single-version-externally-managed install_data

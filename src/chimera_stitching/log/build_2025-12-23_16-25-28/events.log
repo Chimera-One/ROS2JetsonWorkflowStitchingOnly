@@ -1,0 +1,75 @@
+[0.000000] (-) TimerEvent: {}
+[0.001129] (chimera_stitching) JobQueued: {'identifier': 'chimera_stitching', 'dependencies': OrderedDict()}
+[0.001550] (chimera_stitching) JobStarted: {'identifier': 'chimera_stitching'}
+[0.099223] (-) TimerEvent: {}
+[0.199858] (-) TimerEvent: {}
+[0.300606] (-) TimerEvent: {}
+[0.401476] (-) TimerEvent: {}
+[0.502418] (-) TimerEvent: {}
+[0.603329] (-) TimerEvent: {}
+[0.704113] (-) TimerEvent: {}
+[0.805210] (-) TimerEvent: {}
+[0.905968] (-) TimerEvent: {}
+[1.006774] (-) TimerEvent: {}
+[1.107546] (-) TimerEvent: {}
+[1.208320] (-) TimerEvent: {}
+[1.309157] (-) TimerEvent: {}
+[1.409901] (-) TimerEvent: {}
+[1.510670] (-) TimerEvent: {}
+[1.611463] (-) TimerEvent: {}
+[1.712236] (-) TimerEvent: {}
+[1.813070] (-) TimerEvent: {}
+[1.914132] (-) TimerEvent: {}
+[2.014983] (-) TimerEvent: {}
+[2.115682] (-) TimerEvent: {}
+[2.216402] (-) TimerEvent: {}
+[2.317209] (-) TimerEvent: {}
+[2.418013] (-) TimerEvent: {}
+[2.518885] (-) TimerEvent: {}
+[2.530481] (chimera_stitching) Command: {'cmd': ['/usr/bin/python3', '-W', 'ignore:setup.py install is deprecated', '-W', 'ignore:easy_install command is deprecated', 'setup.py', 'egg_info', '--egg-base', 'build/chimera_stitching', 'build', '--build-base', '/home/chimera/ros2_ws/src/chimera_stitching/build/chimera_stitching/build', 'install', '--record', '/home/chimera/ros2_ws/src/chimera_stitching/build/chimera_stitching/install.log', '--single-version-externally-managed', 'install_data'], 'cwd': '/home/chimera/ros2_ws/src/chimera_stitching', 'env': {'LESSOPEN': '| /usr/bin/lesspipe %s', 'USER': 'chimera', 'XDG_SESSION_TYPE': 'x11', 'SHLVL': '1', 'LD_LIBRARY_PATH': '/usr/local/cuda-12.6/lib64:/opt/ros/humble/opt/rviz_ogre_vendor/lib:/opt/ros/humble/lib/aarch64-linux-gnu:/opt/ros/humble/lib', 'HOME': '/home/chimera', 'OLDPWD': '/home/chimera/ros2_ws/src', 'DESKTOP_SESSION': 'ubuntu', 'ROS_PYTHON_VERSION': '3', 'GNOME_SHELL_SESSION_MODE': 'ubuntu', 'GTK_MODULES': 'gail:atk-bridge', 'SYSTEMD_EXEC_PID': '2046', 'DBUS_SESSION_BUS_ADDRESS': 'unix:path=/run/user/1000/bus', 'COLORTERM': 'truecolor', 'IM_CONFIG_PHASE': '1', 'ROS_DISTRO': 'humble', 'GTK_IM_MODULE': 'ibus', 'LOGNAME': 'chimera', '_': '/usr/bin/colcon', 'ROS_VERSION': '2', 'XDG_SESSION_CLASS': 'user', 'USERNAME': 'chimera', 'TERM': 'xterm-256color', 'GNOME_DESKTOP_SESSION_ID': 'this-is-deprecated', 'ROS_LOCALHOST_ONLY': '0', 'WINDOWPATH': '2', 'PATH': '/usr/src/tensorrt/bin:/home/chimera/.local/bin:/usr/local/cuda-12.6/bin:/opt/ros/humble/bin:/home/chimera/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/snap/bin', 'SESSION_MANAGER': 'local/chimera-desktop:@/tmp/.ICE-unix/1643,unix/chimera-desktop:/tmp/.ICE-unix/1643', 'XDG_MENU_PREFIX': 'gnome-', 'GNOME_TERMINAL_SCREEN': '/org/gnome/Terminal/screen/747a9bc9_1190_4bd2_acbd_418cebfe404d', 'XDG_RUNTIME_DIR': '/run/user/1000', 'DISPLAY': ':0', 'LANG': 'en_CA.UTF-8', 'XDG_CURRENT_DESKTOP': 'ubuntu:GNOME', 'XMODIFIERS': '@im=ibus', 'XDG_SESSION_DESKTOP': 'ubuntu', 'XAUTHORITY': '/run/user/1000/gdm/Xauthority', 'LS_COLORS': 'rs=0:di=01;34:ln=01;36:mh=00:pi=40;33:so=01;35:do=01;35:bd=40;33;01:cd=40;33;01:or=40;31;01:mi=00:su=37;41:sg=30;43:ca=30;41:tw=30;42:ow=34;42:st=37;44:ex=01;32:*.tar=01;31:*.tgz=01;31:*.arc=01;31:*.arj=01;31:*.taz=01;31:*.lha=01;31:*.lz4=01;31:*.lzh=01;31:*.lzma=01;31:*.tlz=01;31:*.txz=01;31:*.tzo=01;31:*.t7z=01;31:*.zip=01;31:*.z=01;31:*.dz=01;31:*.gz=01;31:*.lrz=01;31:*.lz=01;31:*.lzo=01;31:*.xz=01;31:*.zst=01;31:*.tzst=01;31:*.bz2=01;31:*.bz=01;31:*.tbz=01;31:*.tbz2=01;31:*.tz=01;31:*.deb=01;31:*.rpm=01;31:*.jar=01;31:*.war=01;31:*.ear=01;31:*.sar=01;31:*.rar=01;31:*.alz=01;31:*.ace=01;31:*.zoo=01;31:*.cpio=01;31:*.7z=01;31:*.rz=01;31:*.cab=01;31:*.wim=01;31:*.swm=01;31:*.dwm=01;31:*.esd=01;31:*.jpg=01;35:*.jpeg=01;35:*.mjpg=01;35:*.mjpeg=01;35:*.gif=01;35:*.bmp=01;35:*.pbm=01;35:*.pgm=01;35:*.ppm=01;35:*.tga=01;35:*.xbm=01;35:*.xpm=01;35:*.tif=01;35:*.tiff=01;35:*.png=01;35:*.svg=01;35:*.svgz=01;35:*.mng=01;35:*.pcx=01;35:*.mov=01;35:*.mpg=01;35:*.mpeg=01;35:*.m2v=01;35:*.mkv=01;35:*.webm=01;35:*.webp=01;35:*.ogm=01;35:*.mp4=01;35:*.m4v=01;35:*.mp4v=01;35:*.vob=01;35:*.qt=01;35:*.nuv=01;35:*.wmv=01;35:*.asf=01;35:*.rm=01;35:*.rmvb=01;35:*.flc=01;35:*.avi=01;35:*.fli=01;35:*.flv=01;35:*.gl=01;35:*.dl=01;35:*.xcf=01;35:*.xwd=01;35:*.yuv=01;35:*.cgm=01;35:*.emf=01;35:*.ogv=01;35:*.ogx=01;35:*.aac=00;36:*.au=00;36:*.flac=00;36:*.m4a=00;36:*.mid=00;36:*.midi=00;36:*.mka=00;36:*.mp3=00;36:*.mpc=00;36:*.ogg=00;36:*.ra=00;36:*.wav=00;36:*.oga=00;36:*.opus=00;36:*.spx=00;36:*.xspf=00;36:', 'GNOME_TERMINAL_SERVICE': ':1.108', 'SSH_AGENT_LAUNCHER': 'gnome-keyring', 'SSH_AUTH_SOCK': '/run/user/1000/keyring/ssh', 'AMENT_PREFIX_PATH': '/opt/ros/humble', 'SHELL': '/bin/bash', 'chiseg': '/home/chimera/ros2_ws/src/chimera_segmentation', 'QT_ACCESSIBILITY': '1', 'GDMSESSION': 'ubuntu', 'LESSCLOSE': '/usr/bin/lesspipe %s %s', 'GPG_AGENT_INFO': '/run/user/1000/gnupg/S.gpg-agent:0:1', 'QT_IM_MODULE': 'ibus', 'PWD': '/home/chimera/ros2_ws/src/chimera_stitching/build/chimera_stitching', 'XDG_CONFIG_DIRS': '/etc/xdg/xdg-ubuntu:/etc/xdg', 'XDG_DATA_DIRS': '/usr/share/ubuntu:/usr/share/gnome:/usr/local/share/:/usr/share/:/var/lib/snapd/desktop', 'PYTHONPATH': '/home/chimera/ros2_ws/src/chimera_stitching/build/chimera_stitching/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/chimera/ros2_ws/src/chimera_stitching/install/chimera_stitching/lib/python3.10/site-packages:/opt/ros/humble/lib/python3.10/site-packages:/opt/ros/humble/local/lib/python3.10/dist-packages', 'COLCON': '1', 'VTE_VERSION': '6800'}, 'shell': False}
+[2.619038] (-) TimerEvent: {}
+[2.719713] (-) TimerEvent: {}
+[2.820370] (-) TimerEvent: {}
+[2.921051] (-) TimerEvent: {}
+[3.021696] (-) TimerEvent: {}
+[3.122346] (-) TimerEvent: {}
+[3.223007] (-) TimerEvent: {}
+[3.323652] (-) TimerEvent: {}
+[3.424285] (-) TimerEvent: {}
+[3.426606] (chimera_stitching) StdoutLine: {'line': b'running egg_info\n'}
+[3.489229] (chimera_stitching) StdoutLine: {'line': b'writing build/chimera_stitching/chimera_stitching.egg-info/PKG-INFO\n'}
+[3.491089] (chimera_stitching) StdoutLine: {'line': b'writing dependency_links to build/chimera_stitching/chimera_stitching.egg-info/dependency_links.txt\n'}
+[3.491694] (chimera_stitching) StdoutLine: {'line': b'writing entry points to build/chimera_stitching/chimera_stitching.egg-info/entry_points.txt\n'}
+[3.492443] (chimera_stitching) StdoutLine: {'line': b'writing requirements to build/chimera_stitching/chimera_stitching.egg-info/requires.txt\n'}
+[3.492892] (chimera_stitching) StdoutLine: {'line': b'writing top-level names to build/chimera_stitching/chimera_stitching.egg-info/top_level.txt\n'}
+[3.524390] (-) TimerEvent: {}
+[3.623194] (chimera_stitching) StdoutLine: {'line': b"reading manifest file 'build/chimera_stitching/chimera_stitching.egg-info/SOURCES.txt'\n"}
+[3.624290] (chimera_stitching) StdoutLine: {'line': b"adding license file 'LICENSE'\n"}
+[3.624603] (-) TimerEvent: {}
+[3.626930] (chimera_stitching) StdoutLine: {'line': b"writing manifest file 'build/chimera_stitching/chimera_stitching.egg-info/SOURCES.txt'\n"}
+[3.627423] (chimera_stitching) StdoutLine: {'line': b'running build\n'}
+[3.627721] (chimera_stitching) StdoutLine: {'line': b'running build_py\n'}
+[3.628228] (chimera_stitching) StdoutLine: {'line': b'copying chimera_stitching/communication.py -> /home/chimera/ros2_ws/src/chimera_stitching/build/chimera_stitching/build/lib/chimera_stitching\n'}
+[3.629097] (chimera_stitching) StdoutLine: {'line': b'copying chimera_stitching/stitching.py -> /home/chimera/ros2_ws/src/chimera_stitching/build/chimera_stitching/build/lib/chimera_stitching\n'}
+[3.629664] (chimera_stitching) StdoutLine: {'line': b'copying chimera_stitching/__init__.py -> /home/chimera/ros2_ws/src/chimera_stitching/build/chimera_stitching/build/lib/chimera_stitching\n'}
+[3.630497] (chimera_stitching) StdoutLine: {'line': b'running install\n'}
+[3.641448] (chimera_stitching) StdoutLine: {'line': b'running install_lib\n'}
+[3.706250] (chimera_stitching) StdoutLine: {'line': b'running install_data\n'}
+[3.706861] (chimera_stitching) StdoutLine: {'line': b'copying resource/chimera_stitching -> /home/chimera/ros2_ws/src/chimera_stitching/install/chimera_stitching/share/ament_index/resource_index/packages\n'}
+[3.707485] (chimera_stitching) StdoutLine: {'line': b'copying package.xml -> /home/chimera/ros2_ws/src/chimera_stitching/install/chimera_stitching/share/chimera_stitching\n'}
+[3.707900] (chimera_stitching) StdoutLine: {'line': b'running install_egg_info\n'}
+[3.724676] (-) TimerEvent: {}
+[3.774421] (chimera_stitching) StdoutLine: {'line': b"removing '/home/chimera/ros2_ws/src/chimera_stitching/install/chimera_stitching/lib/python3.10/site-packages/chimera_stitching-0.0.0-py3.10.egg-info' (and everything under it)\n"}
+[3.775646] (chimera_stitching) StdoutLine: {'line': b'Copying build/chimera_stitching/chimera_stitching.egg-info to /home/chimera/ros2_ws/src/chimera_stitching/install/chimera_stitching/lib/python3.10/site-packages/chimera_stitching-0.0.0-py3.10.egg-info\n'}
+[3.778316] (chimera_stitching) StdoutLine: {'line': b'running install_scripts\n'}
+[3.824797] (-) TimerEvent: {}
+[3.925352] (-) TimerEvent: {}
+[4.025993] (-) TimerEvent: {}
+[4.126639] (-) TimerEvent: {}
+[4.227272] (-) TimerEvent: {}
+[4.253637] (chimera_stitching) StdoutLine: {'line': b'Installing stitching script to /home/chimera/ros2_ws/src/chimera_stitching/install/chimera_stitching/lib/chimera_stitching\n'}
+[4.255682] (chimera_stitching) StdoutLine: {'line': b"writing list of installed files to '/home/chimera/ros2_ws/src/chimera_stitching/build/chimera_stitching/install.log'\n"}
+[4.327461] (-) TimerEvent: {}
+[4.343164] (chimera_stitching) CommandEnded: {'returncode': 0}
+[4.377848] (chimera_stitching) JobEnded: {'identifier': 'chimera_stitching', 'rc': 0}
+[4.380396] (-) EventReactorShutdown: {}

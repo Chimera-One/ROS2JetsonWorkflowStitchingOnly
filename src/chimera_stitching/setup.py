@@ -24,7 +24,8 @@ setup(
     },
     entry_points={
         'console_scripts': [
-            'stitching = chimera_stitching.stitching:main'
+            'communication = chimera_stitching.communication:main',
+            'stitching = chimera_stitching.stitching:main',
         ],
     },
 )
