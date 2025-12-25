@@ -197,13 +197,13 @@ class ReceiveData(Node):
         # self.mask_names = self.create_subscription(String, 'mask_files', self.update_buffers, qos_profile=qos_settings)
         self.mask_images = self.create_subscription(Image, 'mask_images', self.store_masks, qos_profile=qos_settings)
         self.heatmap_images = self.create_subscription(Image, 'heatmaps', self.store_heatmaps, qos_profile=qos_settings)
-        self.crop_health = self.create_subscription(String, 'health', self.store_health_metrics, qos_profile=qos_settings)
+        # self.crop_health = self.create_subscription(String, 'health', self.store_health_metrics, qos_profile=qos_settings)
 
 
 
-        self.rgb_dir = "/home/chimera/ros2_ws/src/chimera_segmentation/images"
-        self.mask_dir = "/home/chimera/ros2_ws/src/chimera_segmentation/masks"
-        self.heatmap_dir = "/home/chimera/ros2_ws/src/chimera_segmentation/heatmaps"
+        self.rgb_dir = "/home/chimera/ros2_ws/src/chimera_stitching/images"
+        self.mask_dir = "/home/chimera/ros2_ws/src/chimera_stitching/masks"
+        self.heatmap_dir = "/home/chimera/ros2_ws/src/chimera_stitching/heatmaps"
 
 
         self.buffer_cv = threading.Condition()
@@ -479,7 +479,16 @@ class ReceiveData(Node):
                     break # Exit the loop cleanly
 
                 # Decode the line, stripping whitespace
-                line = line_bytes.decode('utf-8').strip()
+                # line = line_bytes.decode('utf-8').strip()
+                if line_bytes.startswith(RGB_RECEIVE_PREFIX.encode()):
+                    line = line_bytes.decode('utf-8').strip()
+                elif line_bytes.startswith(MASK_RECEIVE_PREFIX.encode()):
+                    line = line_bytes.decode('utf-8').strip()
+                elif line_bytes.startswith(HEATMAP_RECEIVE_PREFIX.encode()):
+                    line = line_bytes.decode('utf-8').strip()
+                else:
+                    # unrecognized line, skip decoding
+                    continue
 
                 # --- Process RGB Image Data ---
                 if line.startswith(RGB_RECEIVE_PREFIX):
@@ -790,9 +799,9 @@ class ReceiveData(Node):
                         if self.inference_finished:
                             self.mission_publisher_.publish(self.mission_msg)
                 
-                else:
-                    if line: # Avoid logging empty lines
-                        self.get_logger().info(f"Received unhandled line: {line}")
+                # else:
+                    # if line: # Avoid logging empty lines
+                        # self.get_logger().info(f"Received unhandled line: {line}")
 
                 # time.sleep(0.3)
 
