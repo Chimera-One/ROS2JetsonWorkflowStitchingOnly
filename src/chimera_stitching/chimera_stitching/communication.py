@@ -92,33 +92,6 @@ RGB_MAX_SIZE = 20
 
 global_shutdown_flag = threading.Event()
 
-def host_discovery_listener(port):
-    try:
-
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        s.bind(('', port))
-        s.settimeout(LISTEN_TIMEOUT)
-
-        print(f"[*] Listening for discovery packet {DISCOVERY_MESSAGE_EXPECTED.decode('utf-8')} for {LISTEN_TIMEOUT} seconds...")
-
-        while True:
-            data, addr = s.recvfrom(1024)
-            client_ip, client_port = addr   
-
-            print(f"Received: {data.decode()}")
-
-            if data == DISCOVERY_MESSAGE_EXPECTED:
-                print(f"[+] Discovered client at {client_ip}:{port}")
-                s.sendto(
-                    DISCOVERY_MESSAGE_RESPONSE,
-                    (client_ip, client_port)
-                )
-                return client_ip
-
-    except socket.timeout:
-        print(f"\n[-] Listen timed out after {LISTEN_TIMEOUT} seconds.")
-        print("[-] No reply received.")
-        return None
 
 
 
@@ -132,10 +105,18 @@ class ReceiveData(Node):
         global HOST
         global HOST_TABLET
 
+        self.host_socket = None
+
+
         #Run on a loop
         while (HOST == "None" and not self.shutdown_flag.is_set() and rclpy.ok()): 
-            HOST = str(host_discovery_listener(DISCOVERY_PORT))
-            if (HOST == "None"): print(f"Could not find HOST on network")
+            HOST = str(self.host_discovery_listener(DISCOVERY_PORT))
+            if HOST == "None":
+                # print(f"Could not find HOST on network")
+                self.get_logger().info("Could not find HOST on network")
+            else:
+                self.get_logger().info("Found the client!")
+                break
 
         # while (HOST_TABLET == "None" and not self.shutdown_flag.is_set() and rclpy.ok()): 
         #     HOST_TABLET = str(discover_host_udp(DISCOVERY_PORT_TABLET, DISCOVERY_MESSAGE_TABLET))
@@ -143,7 +124,7 @@ class ReceiveData(Node):
 
         #connections
         self.connected = False
-        self.connection_timer = self.create_timer(RECONNECT_TIMER_PERIOD, self.connect_to_server_callback)
+        self.connection_timer = self.create_timer(RECONNECT_TIMER_PERIOD, self.connect_to_client_callback)
         self.connected_tablet = False
         # self.connection_timer_tablet = self.create_timer(RECONNECT_TIMER_PERIOD, self.connect_to_tablet_callback)
         self.threads_running = False
@@ -284,6 +265,34 @@ class ReceiveData(Node):
         #         self.file_position = csvfile.tell()
         #         csvwriter.writerow(fields)
 
+    def host_discovery_listener(self, port):
+        try:
+
+            self.host_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            self.host_socket.bind(('', port))
+            self.host_socket.settimeout(LISTEN_TIMEOUT)
+
+            print(f"[*] Listening for discovery packet {DISCOVERY_MESSAGE_EXPECTED.decode('utf-8')} for {LISTEN_TIMEOUT} seconds...")
+
+            while True:
+                data, addr = self.host_socket.recvfrom(1024)
+                client_ip, client_port = addr   
+
+                print(f"Received: {data.decode()}")
+
+                if data == DISCOVERY_MESSAGE_EXPECTED:
+                    print(f"[+] Discovered client at {client_ip}:{client_port}")
+                    self.host_socket.sendto(
+                        DISCOVERY_MESSAGE_RESPONSE,
+                        (client_ip, client_port)
+                    )
+                    self.host_socket.close()
+                    return client_ip
+
+        except socket.timeout:
+            print(f"\n[-] Listen timed out after {LISTEN_TIMEOUT} seconds.")
+            print("[-] No reply received.")
+            return None
 
 
     def store_stitched_rgb(self,msg):
@@ -458,7 +467,7 @@ class ReceiveData(Node):
             return
 
         # self.get_logger().info("Receiving data from remote server...")
-        file_obj = self.client_socket.makefile('rb')
+        file_obj = self.conn.makefile('rb')
 
         try:
             while self.connected and not self.shutdown_flag.is_set():
@@ -798,14 +807,14 @@ class ReceiveData(Node):
             self.connected = False
             file_obj.close()
             # Reactivate the timer to attempt reconnection
-            if self.client_socket is not None:
-                self.client_socket.close()
-                self.client_socket = None
+            if self.conn is not None:
+                self.conn.close()
+                self.conn = None
 
 
-            if self.client_socket_tablet is not None:
-                self.client_socket_tablet.close()
-                self.client_socket_tablet = None
+            # if self.host_socket_tablet is not None:
+            #     self.host_socket_tablet.close()
+            #     self.host_socket_tablet = None
 
 
 
@@ -851,14 +860,14 @@ class ReceiveData(Node):
             self.connected = False
             self.connected_tablet = False
 
-            if self.client_socket is not None:
-                self.client_socket.close()
-                self.client_socket = None
+            if self.host_socket is not None:
+                self.host_socket.close()
+                self.host_socket = None
 
 
-            if self.client_socket_tablet is not None:
-                self.client_socket_tablet.close()
-                self.client_socket_tablet = None
+            if self.host_socket_tablet is not None:
+                self.host_socket_tablet.close()
+                self.host_socket_tablet = None
 
 
 
@@ -882,10 +891,10 @@ class ReceiveData(Node):
                     stitched_size = len(self.stitched_image_to_bytes)
                     stitched_size_str = str(stitched_size) + '\n'
 
-                    self.client_socket_tablet.send(STITCH_SEND_PREFIX.encode('utf-8'))
-                    self.client_socket_tablet.send(stitched_size_str.encode('utf-8'))
-                    self.client_socket_tablet.sendall(self.stitched_image_to_bytes)
-                    self.client_socket_tablet.send(STITCH_SEND_SUFFIX.encode('utf-8'))
+                    self.host_socket_tablet.send(STITCH_SEND_PREFIX.encode('utf-8'))
+                    self.host_socket_tablet.send(stitched_size_str.encode('utf-8'))
+                    self.host_socket_tablet.sendall(self.stitched_image_to_bytes)
+                    self.host_socket_tablet.send(STITCH_SEND_SUFFIX.encode('utf-8'))
 
                     self.stitched_image_to_bytes = None
                     self.stitch_req = False
@@ -967,12 +976,12 @@ class ReceiveData(Node):
 
 
                 # ------ MASK TO RC ------ 
-                self.client_socket.send(MASK_SEND_PREFIX.encode('utf-8'))
+                self.host_socket.send(MASK_SEND_PREFIX.encode('utf-8'))
                                                                                                                                                                                                                                                                                 
-                self.client_socket.send(mask_size_str.encode('utf-8'))
+                self.host_socket.send(mask_size_str.encode('utf-8'))
 
-                self.client_socket.sendall(mask_to_bytes)
-                self.client_socket.send(MASK_SEND_SUFFIX.encode('utf-8'))
+                self.host_socket.sendall(mask_to_bytes)
+                self.host_socket.send(MASK_SEND_SUFFIX.encode('utf-8'))
 
 
 
@@ -986,10 +995,10 @@ class ReceiveData(Node):
                 #Sending START bytes, size, image then end bytes
 
                 # ------ RGB TO RC ------ 
-                self.client_socket.send(RGB_SEND_PREFIX.encode('utf-8'))
-                self.client_socket.send(rgb_size_str.encode('utf-8'))
-                self.client_socket.sendall(rgb_to_bytes)
-                self.client_socket.send(RGB_SEND_SUFFIX.encode('utf-8'))
+                self.host_socket.send(RGB_SEND_PREFIX.encode('utf-8'))
+                self.host_socket.send(rgb_size_str.encode('utf-8'))
+                self.host_socket.sendall(rgb_to_bytes)
+                self.host_socket.send(RGB_SEND_SUFFIX.encode('utf-8'))
 
 
 
@@ -1001,10 +1010,10 @@ class ReceiveData(Node):
                 heatmap_size_str = str(heatmap_size) + "\n"
 
                 # ------ HEATMAP TO RC ------ 
-                self.client_socket.send(HEATMAP_SEND_PREFIX.encode('utf-8'))
-                self.client_socket.send(heatmap_size_str.encode('utf-8'))
-                self.client_socket.sendall(heatmap_to_bytes)
-                self.client_socket.send(HEATMAP_SEND_SUFFIX.encode('utf-8'))
+                self.host_socket.send(HEATMAP_SEND_PREFIX.encode('utf-8'))
+                self.host_socket.send(heatmap_size_str.encode('utf-8'))
+                self.host_socket.sendall(heatmap_to_bytes)
+                self.host_socket.send(HEATMAP_SEND_SUFFIX.encode('utf-8'))
 
 
 
@@ -1045,11 +1054,11 @@ class ReceiveData(Node):
 
 
                 # ------ GPS TO RC ------ 
-                self.client_socket.send(GPS_SEND_PREFIX.encode('utf-8'))
-                self.client_socket.send(img_long_str.encode('utf-8'))
-                self.client_socket.send(img_lat_str.encode('utf-8'))
-                self.client_socket.send(img_alt_str.encode('utf-8'))
-                self.client_socket.send(GPS_SEND_SUFFIX.encode('utf-8'))
+                self.host_socket.send(GPS_SEND_PREFIX.encode('utf-8'))
+                self.host_socket.send(img_long_str.encode('utf-8'))
+                self.host_socket.send(img_lat_str.encode('utf-8'))
+                self.host_socket.send(img_alt_str.encode('utf-8'))
+                self.host_socket.send(GPS_SEND_SUFFIX.encode('utf-8'))
 
 
 
@@ -1059,57 +1068,57 @@ class ReceiveData(Node):
 
 
                 # ------ BUFFER TO RC ------ 
-                self.client_socket.send(BUFFER_SIZE_PREFIX.encode('utf-8'))
-                self.client_socket.send(buffer_size_str.encode('utf-8'))
-                self.client_socket.send(BUFFER_SIZE_SUFFIX.encode('utf-8'))
+                self.host_socket.send(BUFFER_SIZE_PREFIX.encode('utf-8'))
+                self.host_socket.send(buffer_size_str.encode('utf-8'))
+                self.host_socket.send(BUFFER_SIZE_SUFFIX.encode('utf-8'))
 
 
                 # ------ MASK TO TABLET ------ 
-                self.client_socket_tablet.send(MASK_SEND_PREFIX.encode('utf-8'))
-                self.client_socket_tablet.send(mask_size_str.encode('utf-8'))
+                self.host_socket_tablet.send(MASK_SEND_PREFIX.encode('utf-8'))
+                self.host_socket_tablet.send(mask_size_str.encode('utf-8'))
 
-                self.client_socket_tablet.sendall(mask_to_bytes)
-                self.client_socket_tablet.send(MASK_SEND_SUFFIX.encode('utf-8'))
+                self.host_socket_tablet.sendall(mask_to_bytes)
+                self.host_socket_tablet.send(MASK_SEND_SUFFIX.encode('utf-8'))
 
                 # ------ RGB TO TABLET ------ 
-                self.client_socket_tablet.send(RGB_SEND_PREFIX.encode('utf-8'))
-                self.client_socket_tablet.send(rgb_size_str.encode('utf-8'))
-                self.client_socket_tablet.sendall(rgb_to_bytes)
-                self.client_socket_tablet.send(RGB_SEND_SUFFIX.encode('utf-8'))
+                self.host_socket_tablet.send(RGB_SEND_PREFIX.encode('utf-8'))
+                self.host_socket_tablet.send(rgb_size_str.encode('utf-8'))
+                self.host_socket_tablet.sendall(rgb_to_bytes)
+                self.host_socket_tablet.send(RGB_SEND_SUFFIX.encode('utf-8'))
                 
                 # ------ HEATMAP TO TABLET ------ 
-                self.client_socket_tablet.send(HEATMAP_SEND_PREFIX.encode('utf-8'))
-                self.client_socket_tablet.send(heatmap_size_str.encode('utf-8'))
-                self.client_socket_tablet.sendall(heatmap_to_bytes)
-                self.client_socket_tablet.send(HEATMAP_SEND_SUFFIX.encode('utf-8'))
+                self.host_socket_tablet.send(HEATMAP_SEND_PREFIX.encode('utf-8'))
+                self.host_socket_tablet.send(heatmap_size_str.encode('utf-8'))
+                self.host_socket_tablet.sendall(heatmap_to_bytes)
+                self.host_socket_tablet.send(HEATMAP_SEND_SUFFIX.encode('utf-8'))
 
                 # ------ GPS TO TABLET ------ 
-                self.client_socket_tablet.send(GPS_SEND_PREFIX.encode('utf-8'))
-                self.client_socket_tablet.send(img_long_str.encode('utf-8'))
-                self.client_socket_tablet.send(img_lat_str.encode('utf-8'))
-                self.client_socket_tablet.send(img_alt_str.encode('utf-8'))
-                self.client_socket_tablet.send(GPS_SEND_SUFFIX.encode('utf-8'))
+                self.host_socket_tablet.send(GPS_SEND_PREFIX.encode('utf-8'))
+                self.host_socket_tablet.send(img_long_str.encode('utf-8'))
+                self.host_socket_tablet.send(img_lat_str.encode('utf-8'))
+                self.host_socket_tablet.send(img_alt_str.encode('utf-8'))
+                self.host_socket_tablet.send(GPS_SEND_SUFFIX.encode('utf-8'))
 
                 # ------ BUFFER TO TABLET ------ 
-                self.client_socket_tablet.send(BUFFER_SIZE_PREFIX.encode('utf-8'))
-                self.client_socket_tablet.send(buffer_size_str.encode('utf-8'))
-                self.client_socket_tablet.send(BUFFER_SIZE_SUFFIX.encode('utf-8'))
+                self.host_socket_tablet.send(BUFFER_SIZE_PREFIX.encode('utf-8'))
+                self.host_socket_tablet.send(buffer_size_str.encode('utf-8'))
+                self.host_socket_tablet.send(BUFFER_SIZE_SUFFIX.encode('utf-8'))
 
 
 
                 # ------ RPY TO TABLET -----
-                self.client_socket_tablet.send(RPY_SEND_PREFIX.encode('utf-8'))
-                self.client_socket_tablet.send(img_roll_str.encode('utf-8'))
-                self.client_socket_tablet.send(img_pitch_str.encode('utf-8'))
-                self.client_socket_tablet.send(img_yaw_str.encode('utf-8'))
-                self.client_socket_tablet.send(RPY_SEND_SUFFIX.encode('utf-8'))
+                self.host_socket_tablet.send(RPY_SEND_PREFIX.encode('utf-8'))
+                self.host_socket_tablet.send(img_roll_str.encode('utf-8'))
+                self.host_socket_tablet.send(img_pitch_str.encode('utf-8'))
+                self.host_socket_tablet.send(img_yaw_str.encode('utf-8'))
+                self.host_socket_tablet.send(RPY_SEND_SUFFIX.encode('utf-8'))
 
                 # ------  HEALTH TO TABLET -----
-                self.client_socket_tablet.send(HEALTH_SEND_PREFIX.encode('utf-8'))
-                self.client_socket_tablet.send(str(health_metrics[0]+'\n').encode('utf-8'))
-                self.client_socket_tablet.send(str(health_metrics[1]+'\n').encode('utf-8'))
-                self.client_socket_tablet.send(str(health_metrics[2]+'\n').encode('utf-8'))
-                self.client_socket_tablet.send(HEALTH_SEND_SUFFIX.encode('utf-8'))
+                self.host_socket_tablet.send(HEALTH_SEND_PREFIX.encode('utf-8'))
+                self.host_socket_tablet.send(str(health_metrics[0]+'\n').encode('utf-8'))
+                self.host_socket_tablet.send(str(health_metrics[1]+'\n').encode('utf-8'))
+                self.host_socket_tablet.send(str(health_metrics[2]+'\n').encode('utf-8'))
+                self.host_socket_tablet.send(HEALTH_SEND_SUFFIX.encode('utf-8'))
 
 
 
@@ -1154,9 +1163,9 @@ class ReceiveData(Node):
             self.connected = False
             self.connected_tablet = False
 
-            if self.client_socket is not None:
-                self.client_socket.close()
-                self.client_socket = None
+            if self.host_socket is not None:
+                self.host_socket.close()
+                self.host_socket = None
 
 
             # if self.client_socket_tablet is not None:
@@ -1165,7 +1174,7 @@ class ReceiveData(Node):
 
             if not self.shutdown_flag.is_set():
                 self.threads_running = False
-                self.connection_timer = self.create_timer(RECONNECT_TIMER_PERIOD, self.connect_to_server_callback)
+                self.connection_timer = self.create_timer(RECONNECT_TIMER_PERIOD, self.connect_to_client_callback)
                 # self.connection_timer_tablet = self.create_timer(RECONNECT_TIMER_PERIOD, self.connect_to_tablet_callback)
                 self.get_logger().info("Disconnected. Reconnection timer activated.")
 
@@ -1216,68 +1225,51 @@ class ReceiveData(Node):
 
 
             self.threads.append(self.receive_thread)
-            self.threads.append(self.sending_thread)
-            self.threads.append(self.buffers_thread)
+            # self.threads.append(self.sending_thread)
+            # self.threads.append(self.buffers_thread)
             self.threads.append(self.logging_thread)
 
 
 
 
-    def connect_to_server_callback(self):
-        """
-        This callback is executed by the timer to attempt a connection.
-        """
-        # If already connected, do nothing.
+    def connect_to_client_callback(self):
+
         if self.connected:
             return
 
-        self.get_logger().info(f"Attempting to connect to server at {HOST}:{PORT}...")
         try:
+            # Create listening socket ONCE
+            self.get_logger().info(f"Listening for client on port {PORT}...")
 
-            # Finding the host through UDP
-            # Create a new socket and attempt to connect
-            self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.client_socket.connect((HOST, PORT))
-            
-            # --- Connection Successful---
+            self.host_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.host_socket.bind(("", PORT))
+            self.host_socket.listen(1)
+            self.host_socket.settimeout(1)
+
+            conn, addr = self.host_socket.accept()
+
+            self.conn = conn
             self.connected = True
-            self.get_logger().info("Successfully connected to the server! Now waiting for tablet.")
 
-            # while not self.connected_tablet:
-            #     self.get_logger().warn("Tablet not yet connected. Waiting before starting threads")
-            #     time.sleep(0.1)
+            self.get_logger().info(
+                f"Client connected from {addr[0]}:{addr[1]}"
+            )
+            self.host_socket.settimeout(0)
 
-
-
-            # --- Refresh buffers ----
-            # self.rgb_buffer.clear()
-            # self.rgb_png_buffer.clear()
-            # self.mask_buffer.clear()
-            # self.mask_png_buffer.clear()
-            # self.heatmap_buffer.clear()
-            # self.heatmap_png_buffer.clear()
-            # self.gps_buffer.clear()
-            
-            # Cancel the timer so it doesn't keep trying to connect
             self.connection_timer.cancel()
-            
-            if self.connected:
-                self.run_processing_threads()
-            else:
-                self.connection_timer_tablet = self.create_timer(RECONNECT_TIMER_PERIOD, self.connect_to_server_callback)
+            self.run_processing_threads()
 
-            # You can now start other operations, e.g., create another timer to receive data
-
-
-        except ConnectionRefusedError:
-            self.get_logger().warn("Connection failed. Server may not be running. Retrying...")
-            # The timer will automatically try again on its next cycle.
-            self.client_socket.close() # Close the failed socket
+        except socket.timeout:
+            print(f"\n[-] Listen timed out after {LISTEN_TIMEOUT} seconds.")
+            print("[-] Client not connected yet.")
+            pass 
 
         except Exception as e:
-            self.get_logger().error(f"An unexpected error occurred: {e}")
-            if self.client_socket:
-                self.client_socket.close()
+            self.get_logger().error(f"Accept failed: {e}")
+            if hasattr(self, "tcp_socket"):
+                self.host_socket.close()
+                del self.host_socket
+
 
 
 
@@ -1293,8 +1285,8 @@ class ReceiveData(Node):
         try:
 
             # Create a new socket and attempt to connect
-            self.client_socket_tablet = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.client_socket_tablet.connect((HOST_TABLET, PORT_TABLET))
+            self.host_socket_tablet = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.host_socket_tablet.connect((HOST_TABLET, PORT_TABLET))
             
             # --- Connection Successful---
             self.connected_tablet = True
@@ -1316,7 +1308,7 @@ class ReceiveData(Node):
             if self.connected and self.connected_tablet:
                 self.run_processing_threads()
             else:
-                self.connection_timer = self.create_timer(RECONNECT_TIMER_PERIOD, self.connect_to_server_callback)
+                self.connection_timer = self.create_timer(RECONNECT_TIMER_PERIOD, self.connect_to_client_callback)
 
             # You can now start other operations, e.g., create another timer to receive data
             # self.receive_thread = threading.Thread(target=self.receive_data_from_tablet)
@@ -1342,16 +1334,16 @@ class ReceiveData(Node):
             self.get_logger().warn("Connection failed. Tablet may not be running. Retrying...")
             # The timer will automatically try again on its next cycle.
             # self.client_socket_tablet.close() # Close the failed socket
-            if self.client_socket_tablet is not None:
-                self.client_socket_tablet.close()
-                self.client_socket_tablet.close()
+            if self.host_socket_tablet is not None:
+                self.host_socket_tablet.close()
+                self.host_socket_tablet.close()
         except Exception as e:
             self.get_logger().error(f"An unexpected error occurred: {e}")
             # if self.client_socket_tablet:
             #     self.client_socket_tablet.close()
-            if self.client_socket_tablet is not None:
-                self.client_socket_tablet.close()
-                self.client_socket_tablet = None
+            if self.host_socket_tablet is not None:
+                self.host_socket_tablet.close()
+                self.host_socket_tablet = None
 
     def stop_all_threads(self):
 

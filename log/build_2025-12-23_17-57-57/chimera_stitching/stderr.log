@@ -1,5 +1,0 @@
-  File "/home/chimera/ros2_ws/install/chimera_stitching/lib/python3.10/site-packages/chimera_stitching/communication.py", line 119
-    print(F"\N[-] Listen timed out after {LISTEN_TIMEOUT} seconds.")
-                                                                   ^
-SyntaxError: (unicode error) 'unicodeescape' codec can't decode bytes in position 0-1: malformed \N character escape
-
