@@ -83,6 +83,8 @@ HEALTH_RECEIVE_SUFFIX = "HEALTH_END\n"
 STITCH_SEND_PREFIX = "STITCHED_IMAGE_START\n"
 STITCH_SEND_SUFFIX = "STITCHED_IMAGE_END\n"
 
+MISSION_FINISHED = "MISSION FINISHED\n"
+
 
 RGB_MAX_SIZE = 20
 
@@ -106,6 +108,7 @@ class ReceiveData(Node):
         global HOST_TABLET
 
         self.host_socket = None
+        self.discovery_socket = None
 
 
         #Run on a loop
@@ -194,10 +197,11 @@ class ReceiveData(Node):
         self.rgb_png_buffer = []
 
 
-        # self.mask_names = self.create_subscription(String, 'mask_files', self.update_buffers, qos_profile=qos_settings)
-        self.mask_images = self.create_subscription(Image, 'mask_images', self.store_masks, qos_profile=qos_settings)
-        self.heatmap_images = self.create_subscription(Image, 'heatmaps', self.store_heatmaps, qos_profile=qos_settings)
-        # self.crop_health = self.create_subscription(String, 'health', self.store_health_metrics, qos_profile=qos_settings)
+        ## self.mask_names = self.create_subscription(String, 'mask_files', self.update_buffers, qos_profile=qos_settings)
+        # self.rgb_images = self.create_subscription(Image, 'rgb_images', self.store_rgbs, qos_profile=qos_settings)
+        # self.mask_images = self.create_subscription(Image, 'mask_images', self.store_masks, qos_profile=qos_settings)
+        # self.heatmap_images = self.create_subscription(Image, 'heatmaps', self.store_heatmaps, qos_profile=qos_settings)
+        ## self.crop_health = self.create_subscription(String, 'health', self.store_health_metrics, qos_profile=qos_settings)
 
 
 
@@ -268,25 +272,25 @@ class ReceiveData(Node):
     def host_discovery_listener(self, port):
         try:
 
-            self.host_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            self.host_socket.bind(('', port))
-            self.host_socket.settimeout(LISTEN_TIMEOUT)
+            self.discovery_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            self.discovery_socket.bind(('', port))
+            self.discovery_socket.settimeout(LISTEN_TIMEOUT)
 
             print(f"[*] Listening for discovery packet {DISCOVERY_MESSAGE_EXPECTED.decode('utf-8')} for {LISTEN_TIMEOUT} seconds...")
 
             while True:
-                data, addr = self.host_socket.recvfrom(1024)
+                data, addr = self.discovery_socket.recvfrom(1024)
                 client_ip, client_port = addr   
 
                 print(f"Received: {data.decode()}")
 
                 if data == DISCOVERY_MESSAGE_EXPECTED:
                     print(f"[+] Discovered client at {client_ip}:{client_port}")
-                    self.host_socket.sendto(
+                    self.discovery_socket.sendto(
                         DISCOVERY_MESSAGE_RESPONSE,
                         (client_ip, client_port)
                     )
-                    self.host_socket.close()
+                    self.discovery_socket.close()
                     return client_ip
 
         except socket.timeout:
@@ -323,8 +327,8 @@ class ReceiveData(Node):
         rgb_encoded = cv2.imencode('.png', cv_rgb)[1]
         rgb_to_bytes = rgb_encoded.tobytes()
 
-        with self.rgb_buffer_lock:
-            self.rgb_buffer.append(rgb_to_bytes)
+        # with self.rgb_buffer_lock:
+        #     self.rgb_buffer.append(rgb_to_bytes)
 
 
         #store rgb debug
@@ -335,8 +339,8 @@ class ReceiveData(Node):
         cv2.imwrite(rgb_filepath, cv_rgb) 
 
         # heatmap_pil.save(heatmap_filepath)
-        with self.rgb_png:
-            self.rgb_png_buffer.append(rgb_filepath)
+        # with self.rgb_png:
+        #     self.rgb_png_buffer.append(rgb_filepath)
         
 
 
@@ -350,8 +354,8 @@ class ReceiveData(Node):
         heatmap_encoded = cv2.imencode('.png', cv_heatmap)[1]
         heatmap_to_bytes = heatmap_encoded.tobytes()
 
-        with self.heatmap_buffer_lock:
-            self.heatmap_buffer.append(heatmap_to_bytes)
+        # with self.heatmap_buffer_lock:
+        #     self.heatmap_buffer.append(heatmap_to_bytes)
 
 
         #store heatmaps debug
@@ -362,8 +366,8 @@ class ReceiveData(Node):
         cv2.imwrite(heatmap_filepath, cv_heatmap) 
 
         # heatmap_pil.save(heatmap_filepath)
-        with self.heatmap_png:
-            self.heatmap_png_buffer.append(heatmap_filepath)
+        # with self.heatmap_png:
+        #     self.heatmap_png_buffer.append(heatmap_filepath)
         
 
 
@@ -379,8 +383,8 @@ class ReceiveData(Node):
         mask_encode = cv2.imencode('.png', cv_mask)[1]
         mask_to_bytes = mask_encode.tobytes()
 
-        with self.mask_buffer_lock:
-            self.mask_buffer.append(mask_to_bytes)
+        # with self.mask_buffer_lock:
+        #     self.mask_buffer.append(mask_to_bytes)
 
 
         timestamp = datetime.now(self.pst_tz).strftime("%Y%m%d_%H%M%S_%f")
@@ -388,8 +392,8 @@ class ReceiveData(Node):
         cv2.imwrite(mask_filepath, cv_mask)
 
         # mask_pil.save(mask_filepath)
-        with self.mask_png:
-            self.mask_png_buffer.append(mask_filepath)
+        # with self.mask_png:
+        #     self.mask_png_buffer.append(mask_filepath)
 
 
 
@@ -476,26 +480,37 @@ class ReceiveData(Node):
 
                 if not line_bytes:
                     self.get_logger().warn("Connection closed by server.")
+                    self.connected = False
+
                     break # Exit the loop cleanly
 
                 # Decode the line, stripping whitespace
                 # line = line_bytes.decode('utf-8').strip()
+
                 if line_bytes.startswith(RGB_RECEIVE_PREFIX.encode()):
-                    line = line_bytes.decode('utf-8').strip()
+                    line = line_bytes.decode('utf-8')
+                    # self.get_logger().info(f"RGB prefix found")
                 elif line_bytes.startswith(MASK_RECEIVE_PREFIX.encode()):
-                    line = line_bytes.decode('utf-8').strip()
+                    line = line_bytes.decode('utf-8')
+                    # self.get_logger().info(f"MASK prefix found")
                 elif line_bytes.startswith(HEATMAP_RECEIVE_PREFIX.encode()):
-                    line = line_bytes.decode('utf-8').strip()
+                    line = line_bytes.decode('utf-8')
+                    # self.get_logger().info(f"HEATMAP prefix found")
+                elif line_bytes.startswith(IMAGE_NONE_PREFIX.encode()):
+                    line = line_bytes.decode('utf-8')
+                    # self.get_logger().info(f"IMAGE NONE prefix found")
+                elif line_bytes.startswith(("MISSION FINISHED").encode()):
+                    line = line_bytes.decode('utf-8')
+                    # self.get_logger().info(f"MISSION FINISHED prefix found")
                 else:
                     # unrecognized line, skip decoding
                     continue
-
+                
                 # --- Process RGB Image Data ---
-                if line.startswith(RGB_RECEIVE_PREFIX):
+                if line == RGB_RECEIVE_PREFIX:
                     try:
                         # 1. Parse image size from the header
-                        header_parts = line.split(':')
-                        image_size = int(header_parts[1])
+                        image_size = int(file_obj.readline().decode('utf-8').strip())
                         self.get_logger().info(f"RGB Image header received. Size: {image_size} bytes.")
 
                         # 2. Read the exact number of bytes for the image from the buffered file object
@@ -507,7 +522,7 @@ class ReceiveData(Node):
 
                         # 3. Read the "RGB_RECEIVE_SUFFIX" marker
                         end_marker_bytes = file_obj.readline()
-                        end_marker = end_marker_bytes.decode('utf-8').strip()
+                        end_marker = end_marker_bytes.decode('utf-8')
                         if end_marker != RGB_RECEIVE_SUFFIX:
                             self.get_logger().warn(f"Expected {RGB_RECEIVE_SUFFIX}, but got: '{end_marker}'")
 
@@ -589,11 +604,10 @@ class ReceiveData(Node):
                         self.get_logger().error(f"Error reading or processing RGB image: {e}")
 
                 # --- Process MASK Image Data ---
-                elif line.startswith(MASK_RECEIVE_PREFIX):
+                elif line == MASK_RECEIVE_PREFIX:
                     try:
                         # 1. Parse image size from the header
-                        header_parts = line.split(':')
-                        image_size = int(header_parts[1])
+                        image_size = int(file_obj.readline().decode('utf-8').strip())
                         self.get_logger().info(f"MASK Image header received. Size: {image_size} bytes.")
 
                         # 2. Read the exact number of bytes for the image from the buffered file object
@@ -605,7 +619,7 @@ class ReceiveData(Node):
 
                         # 3. Read the "MASK_RECEIVE_SUFFIX" marker
                         end_marker_bytes = file_obj.readline()
-                        end_marker = end_marker_bytes.decode('utf-8').strip()
+                        end_marker = end_marker_bytes.decode('utf-8')
                         if end_marker != MASK_RECEIVE_SUFFIX:
                             self.get_logger().warn(f"Expected {MASK_RECEIVE_SUFFIX}, but got: '{end_marker}'")
 
@@ -688,11 +702,10 @@ class ReceiveData(Node):
                         self.get_logger().error(f"Error reading or processing MASK image: {e}")
 
                 # --- Process HEATMAP Image Data ---
-                elif line.startswith(HEATMAP_RECEIVE_PREFIX):
+                elif line == HEATMAP_RECEIVE_PREFIX:
                     try:
                         # 1. Parse image size from the header
-                        header_parts = line.split(':')
-                        image_size = int(header_parts[1])
+                        image_size = int(file_obj.readline().decode('utf-8').strip())
                         self.get_logger().info(f"HEATMAP Image header received. Size: {image_size} bytes.")
 
                         # 2. Read the exact number of bytes for the image from the buffered file object
@@ -704,7 +717,7 @@ class ReceiveData(Node):
 
                         # 3. Read the "HEATMAP_RECEIVE_SUFFIX" marker
                         end_marker_bytes = file_obj.readline()
-                        end_marker = end_marker_bytes.decode('utf-8').strip()
+                        end_marker = end_marker_bytes.decode('utf-8')
                         if end_marker != HEATMAP_RECEIVE_SUFFIX:
                             self.get_logger().warn(f"Expected {HEATMAP_RECEIVE_SUFFIX}, but got: '{end_marker}'")
 
@@ -786,10 +799,10 @@ class ReceiveData(Node):
                     except Exception as e:
                         self.get_logger().error(f"Error reading or processing HEATMAP image: {e}")
 
-                elif line.startswith(IMAGE_NONE_PREFIX):
+                elif line == IMAGE_NONE_PREFIX:
                     self.get_logger().info("Server indicated no image was sent.")
 
-                elif line.startswith("MISSION FINISHED"):
+                elif line == MISSION_FINISHED:
                     self.get_logger().info("Mission Signal Received")
 
 
@@ -804,6 +817,8 @@ class ReceiveData(Node):
                         # self.get_logger().info(f"Received unhandled line: {line}")
 
                 # time.sleep(0.3)
+            
+
 
 
         except Exception as e:
@@ -812,13 +827,23 @@ class ReceiveData(Node):
             # Cleanup when the loop exits for any reason
 
             self.get_logger().warn("Receive loop finished.")
-            self.connected_tablet = False
+            # self.connected_tablet = False
             self.connected = False
             file_obj.close()
-            # Reactivate the timer to attempt reconnection
             if self.conn is not None:
                 self.conn.close()
                 self.conn = None
+            else:
+                # Reactivate the timer to attempt reconnection
+                # while (HOST == "None" and not self.shutdown_flag.is_set() and rclpy.ok()): 
+                #     HOST = str(self.host_discovery_listener(DISCOVERY_PORT))
+                #     if HOST == "None":
+                #         # print(f"Could not find HOST on network")
+                #         self.get_logger().info("Could not find HOST on network")
+                #     else:
+                #         self.get_logger().info("Found the client!")
+                #         break
+                self.connection_timer = self.create_timer(RECONNECT_TIMER_PERIOD, self.connect_to_client_callback)
 
 
             # if self.host_socket_tablet is not None:
@@ -1134,7 +1159,6 @@ class ReceiveData(Node):
                 csv_timestamp = datetime.now(self.pst_tz)
                 time_log = csv_timestamp.strftime("%H:%M:%S:%f")
 
-
                 mask_dir_str = None
                 heatmap_dir_str = None
 
@@ -1263,10 +1287,9 @@ class ReceiveData(Node):
             self.get_logger().info(
                 f"Client connected from {addr[0]}:{addr[1]}"
             )
-            self.host_socket.settimeout(0)
 
-            self.connection_timer.cancel()
             self.run_processing_threads()
+            self.connection_timer.cancel()
 
         except socket.timeout:
             print(f"\n[-] Listen timed out after {LISTEN_TIMEOUT} seconds.")
@@ -1276,6 +1299,7 @@ class ReceiveData(Node):
         except Exception as e:
             self.get_logger().error(f"Accept failed: {e}")
             if hasattr(self, "tcp_socket"):
+                self.connected = False
                 self.host_socket.close()
                 del self.host_socket
 
