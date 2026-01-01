@@ -171,7 +171,10 @@ class ReceiveData(Node):
 
         #stitched images
         self.mission_publisher_ = self.create_publisher(String, "mission_completion", qos_profile=qos_settings)
-        self.rgb_subscriber_ = self.create_subscription(Image, "stitched_rgb", self.store_stitched_rgb, qos_profile=qos_settings)
+        # self.rgb_subscriber_ = self.create_subscription(Image, "stitched_rgb", self.store_stitched_rgb, qos_profile=qos_settings)
+        self.rgb_subscriber_ = self.create_subscription(Image, "rgb_images", self.store_rgbs, qos_profile=qos_settings)
+        self.mask_subscriber_ = self.create_subscription(Image, "mask_images", self.store_masks, qos_profile=qos_settings)
+        self.heatmap_subscriber_ = self.create_subscription(Image, "heatmaps", self.store_heatmaps, qos_profile=qos_settings)
         self.stitched_image_to_bytes = None
         self.stitch_req = False
         self.inference_finished = False
@@ -237,6 +240,9 @@ class ReceiveData(Node):
 
         #sending health metrics to the tablet
         self.health_buffer = []
+
+        self.last_image_time = time.monotonic()
+        self.stitch_timeout_sec = 10.0
 
 
 
@@ -337,6 +343,7 @@ class ReceiveData(Node):
 
 
         cv2.imwrite(rgb_filepath, cv_rgb) 
+        self.last_image_time = time.monotonic()
 
         # heatmap_pil.save(heatmap_filepath)
         # with self.rgb_png:
@@ -364,6 +371,7 @@ class ReceiveData(Node):
 
 
         cv2.imwrite(heatmap_filepath, cv_heatmap) 
+        self.last_image_time = time.monotonic()
 
         # heatmap_pil.save(heatmap_filepath)
         # with self.heatmap_png:
@@ -389,7 +397,9 @@ class ReceiveData(Node):
 
         timestamp = datetime.now(self.pst_tz).strftime("%Y%m%d_%H%M%S_%f")
         mask_filepath = os.path.join(self.mask_dir, f"mask_{timestamp}.png")
+
         cv2.imwrite(mask_filepath, cv_mask)
+        self.last_image_time = time.monotonic()
 
         # mask_pil.save(mask_filepath)
         # with self.mask_png:
@@ -501,7 +511,7 @@ class ReceiveData(Node):
                     # self.get_logger().info(f"IMAGE NONE prefix found")
                 elif line_bytes.startswith(("MISSION FINISHED").encode()):
                     line = line_bytes.decode('utf-8')
-                    # self.get_logger().info(f"MISSION FINISHED prefix found")
+                    self.get_logger().info(f"MISSION FINISHED prefix found")
                 else:
                     # unrecognized line, skip decoding
                     continue
@@ -510,7 +520,13 @@ class ReceiveData(Node):
                 if line == RGB_RECEIVE_PREFIX:
                     try:
                         # 1. Parse image size from the header
-                        image_size = int(file_obj.readline().decode('utf-8').strip())
+                        image_size = file_obj.readline().strip()
+
+                        if not image_size.isdigit():
+                            self.get_logger().error(f"Invalid size header: {image_size[:32]}...")
+                            continue
+                        image_size = int(image_size)
+                        # image_size = int(file_obj.readline().decode('utf-8').strip())
                         self.get_logger().info(f"RGB Image header received. Size: {image_size} bytes.")
 
                         # 2. Read the exact number of bytes for the image from the buffered file object
@@ -607,7 +623,13 @@ class ReceiveData(Node):
                 elif line == MASK_RECEIVE_PREFIX:
                     try:
                         # 1. Parse image size from the header
-                        image_size = int(file_obj.readline().decode('utf-8').strip())
+                        image_size = file_obj.readline().strip()
+
+                        if not image_size.isdigit():
+                            self.get_logger().error(f"Invalid size header: {image_size[:32]}...")
+                            continue
+                        image_size = int(image_size)
+                        # image_size = int(file_obj.readline().decode('utf-8').strip())
                         self.get_logger().info(f"MASK Image header received. Size: {image_size} bytes.")
 
                         # 2. Read the exact number of bytes for the image from the buffered file object
@@ -705,7 +727,13 @@ class ReceiveData(Node):
                 elif line == HEATMAP_RECEIVE_PREFIX:
                     try:
                         # 1. Parse image size from the header
-                        image_size = int(file_obj.readline().decode('utf-8').strip())
+                        image_size = file_obj.readline().strip()
+
+                        if not image_size.isdigit():
+                            self.get_logger().error(f"Invalid size header: {image_size[:32]}...")
+                            continue
+                        image_size = int(image_size)
+                        # image_size = int(file_obj.readline().decode('utf-8').strip())
                         self.get_logger().info(f"HEATMAP Image header received. Size: {image_size} bytes.")
 
                         # 2. Read the exact number of bytes for the image from the buffered file object
@@ -809,8 +837,8 @@ class ReceiveData(Node):
                     if not self.stitch_req:
                         self.stitch_req = True
 
-                        if self.inference_finished:
-                            self.mission_publisher_.publish(self.mission_msg)
+                        # if self.inference_finished:
+                        #     self.mission_publisher_.publish(self.mission_msg)
                 
                 # else:
                     # if line: # Avoid logging empty lines
@@ -851,16 +879,51 @@ class ReceiveData(Node):
             #     self.host_socket_tablet = None
 
 
+    def stitching_trigger(self):
+
+        self.get_logger().info("Stitching trigger thread started")
+
+        try:
+            while not self.shutdown_flag.is_set():
+
+                if not self.connected or not self.stitch_req:
+                    time.sleep(1)
+                    continue
+
+                # Only act if mission finished signal was received
+                if self.stitch_req:
+                    elapsed = time.monotonic() - self.last_image_time
+
+                    if elapsed >= self.stitch_timeout_sec:
+                        self.get_logger().warn(
+                            f"No images received for {elapsed:.1f}s — triggering mission completion"
+                        )
+
+                        self.mission_publisher_.publish(self.mission_msg)
+
+                        # Prevent duplicate publishes
+                        self.stitch_req = False
+                        self.inference_finished = True
+
+                time.sleep(1)
+
+        except Exception as e:
+            self.get_logger().error(f"Error in stitching_trigger: {e}")
+        finally:
+            self.get_logger().warn("Stitching trigger thread exited")
+
+
+
 
     def logging_callback(self):
 
 
-        if not self.connected or not self.connected_tablet:
+        if not self.connected:
             return
 
         try:
 
-            while self.connected_tablet and self.connected and not self.shutdown_flag.is_set():
+            while self.connected and not self.shutdown_flag.is_set():
 
 
 
@@ -899,9 +962,9 @@ class ReceiveData(Node):
                 self.host_socket = None
 
 
-            if self.host_socket_tablet is not None:
-                self.host_socket_tablet.close()
-                self.host_socket_tablet = None
+            # if self.host_socket_tablet is not None:
+            #     self.host_socket_tablet.close()
+            #     self.host_socket_tablet = None
 
 
 
@@ -1253,6 +1316,9 @@ class ReceiveData(Node):
             # self.buffers_thread = threading.Thread(target=self.update_buffers)
             # self.buffers_thread.start()
 
+            self.stitching_trigger_thread = threading.Thread(target=self.stitching_trigger)
+            self.stitching_trigger_thread.start()
+
             self.logging_thread = threading.Thread(target=self.logging_callback)
             self.logging_thread.start()
 
@@ -1260,6 +1326,7 @@ class ReceiveData(Node):
             self.threads.append(self.receive_thread)
             # self.threads.append(self.sending_thread)
             # self.threads.append(self.buffers_thread)
+            self.threads.append(self.stitching_trigger_thread)
             self.threads.append(self.logging_thread)
 
 

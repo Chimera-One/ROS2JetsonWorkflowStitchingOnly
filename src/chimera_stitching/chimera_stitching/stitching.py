@@ -38,7 +38,7 @@ import time
 import subprocess
 
 
-INCLUDE_DIR = "/home/chimera/ros2_ws/src/chimera_segmentation/include"
+INCLUDE_DIR = "/home/chimera/ros2_ws/src/chimera_stitching/include"
 SCRIPT_PATH = "/home/chimera/scripts/mission_reset.sh"
 CONFIG_PATH = os.path.join(INCLUDE_DIR, "config.yaml")
 
