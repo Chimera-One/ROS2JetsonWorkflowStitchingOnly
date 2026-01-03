@@ -55,3 +55,5 @@ src/chimera_stitching/images
 src/chimera_stitching/masks
 src/chimera_stitching/heatmaps
 src/chimera_stitching/include
+
+src/chimera_stitching/stitches
