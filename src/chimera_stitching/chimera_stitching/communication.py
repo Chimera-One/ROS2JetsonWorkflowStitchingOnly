@@ -14,6 +14,7 @@ from rclpy.executors import MultiThreadedExecutor
 from std_msgs.msg import Float32, String
 from sensor_msgs.msg import Image
 from PIL import Image as PILImage
+from std_srvs.srv import Trigger
 
 import struct
 
@@ -112,14 +113,14 @@ class ReceiveData(Node):
 
 
         #Run on a loop
-        while (HOST == "None" and not self.shutdown_flag.is_set() and rclpy.ok()): 
-            HOST = str(self.host_discovery_listener(DISCOVERY_PORT))
-            if HOST == "None":
-                # print(f"Could not find HOST on network")
-                self.get_logger().info("Could not find HOST on network")
-            else:
-                self.get_logger().info("Found the client!")
-                break
+        # while (HOST == "None" and not self.shutdown_flag.is_set() and rclpy.ok()): 
+        #     HOST = str(self.host_discovery_listener(DISCOVERY_PORT))
+        #     if HOST == "None":
+        #         # print(f"Could not find HOST on network")
+        #         self.get_logger().info("Could not find HOST on network")
+        #     else:
+        #         self.get_logger().info("Found the client!")
+        #         break
 
         # while (HOST_TABLET == "None" and not self.shutdown_flag.is_set() and rclpy.ok()): 
         #     HOST_TABLET = str(discover_host_udp(DISCOVERY_PORT_TABLET, DISCOVERY_MESSAGE_TABLET))
@@ -127,7 +128,7 @@ class ReceiveData(Node):
 
         #connections
         self.connected = False
-        self.connection_timer = self.create_timer(RECONNECT_TIMER_PERIOD, self.connect_to_client_callback)
+        # self.connection_timer = self.create_timer(RECONNECT_TIMER_PERIOD, self.connect_to_client_callback)
         self.connected_tablet = False
         # self.connection_timer_tablet = self.create_timer(RECONNECT_TIMER_PERIOD, self.connect_to_tablet_callback)
         self.threads_running = False
@@ -159,12 +160,14 @@ class ReceiveData(Node):
 
         #stitched images
         self.mission_publisher_ = self.create_publisher(String, "mission_completion", qos_profile=qos_settings)
+        self.mission_publisher_check_ = self.create_client(Trigger, "mission_completion_check") # , qos_profile=qos_settings)
         # self.rgb_subscriber_ = self.create_subscription(Image, "stitched_rgb", self.store_stitched_rgb, qos_profile=qos_settings)
         self.rgb_subscriber_ = self.create_subscription(Image, "rgb_images", self.store_rgbs, qos_profile=qos_settings)
         self.mask_subscriber_ = self.create_subscription(Image, "mask_images", self.store_masks, qos_profile=qos_settings)
         self.heatmap_subscriber_ = self.create_subscription(Image, "heatmaps", self.store_heatmaps, qos_profile=qos_settings)
         self.stitched_image_to_bytes = None
         self.stitch_req = False
+        self.stitch_request_in_flight = False
         self.inference_finished = False
 
         self.mission_msg = String()
@@ -249,6 +252,8 @@ class ReceiveData(Node):
             self.file_position = csvfile.tell()
             csvwriter.writerow(sent_fields)
 
+        self.run_processing_threads()
+
 
 
         #Writing waterfall fields
@@ -306,6 +311,24 @@ class ReceiveData(Node):
 
         with self.health_buffer_lock:
             self.health_buffer.append(msg.data.split('\n'))
+
+    
+    def on_stitch_response(self, future):
+        try:
+            response = future.result()
+            self.stitch_req = response.success
+            if self.stitch_req:
+                self.mission_publisher_.publish(self.mission_msg)
+                self.get_logger().info(f"Stitch request result: True")
+            else:
+                self.get_logger().info(f"Stitch request result: False")
+        except Exception as e:
+            self.get_logger().error(f"Stitch service failed: {e}")
+        finally:
+            self.last_image_time = time.monotonic()
+            self.stitch_request_in_flight = False
+
+
 
     
 
@@ -392,81 +415,81 @@ class ReceiveData(Node):
         #     self.mask_png_buffer.append(mask_filepath)
 
 
-    def receive_data_from_remote(self):
-        if not self.connected:
-            self.get_logger().info(f"connected: {self.connected}")
-            return
-
-        # self.get_logger().info("Receiving data from remote server...")
-        file_obj = self.conn.makefile('rb')
-
-        try:
-            while self.connected and not self.shutdown_flag.is_set():
-                # Always read raw bytes first, then decode
-                line_bytes = file_obj.readline()
-
-                if not line_bytes:
-                    self.get_logger().warn("Connection closed by server.")
-                    self.connected = False
-
-                    break # Exit the loop cleanly
-
-                # Decode the line, stripping whitespace
-                # line = line_bytes.decode('utf-8').strip()
-
-                if line_bytes.startswith(("MISSION FINISHED").encode()):
-                    line = line_bytes.decode('utf-8')
-                    self.get_logger().info("Mission Signal Received")
-
-
-                    if not self.stitch_req:
-                        self.stitch_req = True
-
-                        # if self.inference_finished:
-                        #     self.mission_publisher_.publish(self.mission_msg)
-                
-                # else:
-                    # if line: # Avoid logging empty lines
-                        # self.get_logger().info(f"Received unhandled line: {line}")
-
-                # time.sleep(0.3)
-            
-
-
-
-        except Exception as e:
-            self.get_logger().error(f"An unexpected error occurred in receive loop: {e}")
-        finally:
-            # Cleanup when the loop exits for any reason
-
-            self.get_logger().warn("Receive loop finished.")
-            # self.connected_tablet = False
-            self.connected = False
-            file_obj.close()
-            if self.conn is not None:
-                self.conn.close()
-                self.conn = None
-            else:
-                # Reactivate the timer to attempt reconnection
-                # while (HOST == "None" and not self.shutdown_flag.is_set() and rclpy.ok()): 
-                #     HOST = str(self.host_discovery_listener(DISCOVERY_PORT))
-                #     if HOST == "None":
-                #         # print(f"Could not find HOST on network")
-                #         self.get_logger().info("Could not find HOST on network")
-                #     else:
-                #         self.get_logger().info("Found the client!")
-                #         break
-                # self.connection_timer = self.create_timer(RECONNECT_TIMER_PERIOD, self.connect_to_client_callback)
-                if not self.shutdown_flag.is_set():
-                    self.threads_running = False
-                    self.connection_timer = self.create_timer(RECONNECT_TIMER_PERIOD, self.connect_to_client_callback)
-                    # self.connection_timer_tablet = self.create_timer(RECONNECT_TIMER_PERIOD, self.connect_to_tablet_callback)
-                    self.get_logger().info("Disconnected. Reconnection timer activated.")
-
-
-            # if self.host_socket_tablet is not None:
-            #     self.host_socket_tablet.close()
-            #     self.host_socket_tablet = None
+#     def receive_data_from_remote(self):
+#         if not self.connected:
+#             self.get_logger().info(f"connected: {self.connected}")
+#             return
+# 
+#         # self.get_logger().info("Receiving data from remote server...")
+#         file_obj = self.conn.makefile('rb')
+# 
+#         try:
+#             while self.connected and not self.shutdown_flag.is_set():
+#                 # Always read raw bytes first, then decode
+#                 line_bytes = file_obj.readline()
+# 
+#                 if not line_bytes:
+#                     self.get_logger().warn("Connection closed by server.")
+#                     self.connected = False
+# 
+#                     break # Exit the loop cleanly
+# 
+#                 # Decode the line, stripping whitespace
+#                 # line = line_bytes.decode('utf-8').strip()
+# 
+#                 if line_bytes.startswith(("MISSION FINISHED").encode()):
+#                     line = line_bytes.decode('utf-8')
+#                     self.get_logger().info("Mission Signal Received")
+# 
+# 
+#                     if not self.stitch_req:
+#                         self.stitch_req = True
+# 
+#                         # if self.inference_finished:
+#                         #     self.mission_publisher_.publish(self.mission_msg)
+#                 
+#                 # else:
+#                     # if line: # Avoid logging empty lines
+#                         # self.get_logger().info(f"Received unhandled line: {line}")
+# 
+#                 # time.sleep(0.3)
+#             
+# 
+# 
+# 
+#         except Exception as e:
+#             self.get_logger().error(f"An unexpected error occurred in receive loop: {e}")
+#         finally:
+#             # Cleanup when the loop exits for any reason
+# 
+#             self.get_logger().warn("Receive loop finished.")
+#             # self.connected_tablet = False
+#             self.connected = False
+#             file_obj.close()
+#             if self.conn is not None:
+#                 self.conn.close()
+#                 self.conn = None
+#             else:
+#                 # Reactivate the timer to attempt reconnection
+#                 # while (HOST == "None" and not self.shutdown_flag.is_set() and rclpy.ok()): 
+#                 #     HOST = str(self.host_discovery_listener(DISCOVERY_PORT))
+#                 #     if HOST == "None":
+#                 #         # print(f"Could not find HOST on network")
+#                 #         self.get_logger().info("Could not find HOST on network")
+#                 #     else:
+#                 #         self.get_logger().info("Found the client!")
+#                 #         break
+#                 # self.connection_timer = self.create_timer(RECONNECT_TIMER_PERIOD, self.connect_to_client_callback)
+#                 if not self.shutdown_flag.is_set():
+#                     self.threads_running = False
+#                     self.connection_timer = self.create_timer(RECONNECT_TIMER_PERIOD, self.connect_to_client_callback)
+#                     # self.connection_timer_tablet = self.create_timer(RECONNECT_TIMER_PERIOD, self.connect_to_tablet_callback)
+#                     self.get_logger().info("Disconnected. Reconnection timer activated.")
+# 
+# 
+#             # if self.host_socket_tablet is not None:
+#             #     self.host_socket_tablet.close()
+#             #     self.host_socket_tablet = None
 
 
     def stitching_trigger(self):
@@ -476,24 +499,34 @@ class ReceiveData(Node):
         try:
             while not self.shutdown_flag.is_set():
 
-                if not self.connected or not self.stitch_req:
-                    time.sleep(1)
-                    continue
+                # if not self.connected:
+                #     continue
 
                 # Only act if mission finished signal was received
-                if self.stitch_req:
-                    elapsed = time.monotonic() - self.last_image_time
+                # if self.stitch_req:
+                elapsed = time.monotonic() - self.last_image_time
 
-                    if elapsed >= self.stitch_timeout_sec:
-                        self.get_logger().warn(
-                            f"No images received for {elapsed:.1f}s — triggering mission completion"
-                        )
+                if elapsed >= self.stitch_timeout_sec:
+                    self.get_logger().warn(
+                        f"No images received for {elapsed:.1f}s — checking mission completion"
+                    )
+                    self.last_image_time = time.monotonic()
 
-                        self.mission_publisher_.publish(self.mission_msg)
+                    if not self.stitch_req and not self.stitch_request_in_flight:
+                        if not self.mission_publisher_check_.service_is_ready():
+                            self.get_logger().warn("Stitch service not ready")
+                            continue
 
-                        # Prevent duplicate publishes
-                        self.stitch_req = False
-                        self.inference_finished = True
+                        self.stitch_request_in_flight = True
+                        request = Trigger.Request()
+                        future = self.mission_publisher_check_.call_async(request)
+                        future.add_done_callback(self.on_stitch_response)
+
+                    # self.mission_publisher_.publish(self.mission_msg)
+
+                    # Prevent duplicate publishes
+                    self.stitch_req = False
+                    self.inference_finished = True
 
                 time.sleep(1)
 
@@ -508,12 +541,9 @@ class ReceiveData(Node):
     def logging_callback(self):
 
 
-        if not self.connected:
-            return
-
         try:
 
-            while self.connected and not self.shutdown_flag.is_set():
+            while not self.shutdown_flag.is_set():
 
 
 
@@ -561,8 +591,8 @@ class ReceiveData(Node):
 
             self.threads_running = True
 
-            self.receive_thread = threading.Thread(target=self.receive_data_from_remote)
-            self.receive_thread.start()
+            # self.receive_thread = threading.Thread(target=self.receive_data_from_remote)
+            # self.receive_thread.start()
 
             # self.sending_thread = threading.Thread(target=self.send_data_to_remote)
             # self.sending_thread.start()
@@ -577,7 +607,7 @@ class ReceiveData(Node):
             self.logging_thread.start()
 
 
-            self.threads.append(self.receive_thread)
+            # self.threads.append(self.receive_thread)
             # self.threads.append(self.sending_thread)
             # self.threads.append(self.buffers_thread)
             self.threads.append(self.stitching_trigger_thread)
@@ -586,59 +616,59 @@ class ReceiveData(Node):
 
 
 
-    def connect_to_client_callback(self):
-
-        if self.connected:
-            return
-
-        try:
-            # Create listening socket ONCE
-            self.get_logger().info(f"Listening for client on port {PORT}...")
-
-            self.host_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.host_socket.bind(("", PORT))
-            self.host_socket.listen(1)
-            self.host_socket.settimeout(1)
-
-            conn, addr = self.host_socket.accept()
-
-            self.conn = conn
-            self.connected = True
-
-            self.get_logger().info(
-                f"Client connected from {addr[0]}:{addr[1]}"
-            )
-
-            self.run_processing_threads()
-            self.connection_timer.cancel()
-
-        except socket.timeout:
-            print(f"\n[-] Listen timed out after {LISTEN_TIMEOUT} seconds.")
-            print("[-] Client not connected yet.")
-            pass 
-
-        except Exception as e:
-            self.get_logger().error(f"Accept failed: {e}")
-            if hasattr(self, "tcp_socket"):
-                self.connected = False
-                self.host_socket.close()
-                del self.host_socket
-
-
-        except ConnectionRefusedError:
-            self.get_logger().warn("Connection failed. Tablet may not be running. Retrying...")
-            # The timer will automatically try again on its next cycle.
-            # self.client_socket_tablet.close() # Close the failed socket
-            if self.host_socket_tablet is not None:
-                self.host_socket_tablet.close()
-                self.host_socket_tablet.close()
-        except Exception as e:
-            self.get_logger().error(f"An unexpected error occurred: {e}")
-            # if self.client_socket_tablet:
-            #     self.client_socket_tablet.close()
-            if self.host_socket_tablet is not None:
-                self.host_socket_tablet.close()
-                self.host_socket_tablet = None
+#     def connect_to_client_callback(self):
+# 
+#         if self.connected:
+#             return
+# 
+#         try:
+#             # Create listening socket ONCE
+#             self.get_logger().info(f"Listening for client on port {PORT}...")
+# 
+#             self.host_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+#             self.host_socket.bind(("", PORT))
+#             self.host_socket.listen(1)
+#             self.host_socket.settimeout(1)
+# 
+#             conn, addr = self.host_socket.accept()
+# 
+#             self.conn = conn
+#             self.connected = True
+# 
+#             self.get_logger().info(
+#                 f"Client connected from {addr[0]}:{addr[1]}"
+#             )
+# 
+#             self.run_processing_threads()
+#             self.connection_timer.cancel()
+# 
+#         except socket.timeout:
+#             print(f"\n[-] Listen timed out after {LISTEN_TIMEOUT} seconds.")
+#             print("[-] Client not connected yet.")
+#             pass 
+# 
+#         except Exception as e:
+#             self.get_logger().error(f"Accept failed: {e}")
+#             if hasattr(self, "tcp_socket"):
+#                 self.connected = False
+#                 self.host_socket.close()
+#                 del self.host_socket
+# 
+# 
+#         except ConnectionRefusedError:
+#             self.get_logger().warn("Connection failed. Tablet may not be running. Retrying...")
+#             # The timer will automatically try again on its next cycle.
+#             # self.client_socket_tablet.close() # Close the failed socket
+#             if self.host_socket_tablet is not None:
+#                 self.host_socket_tablet.close()
+#                 self.host_socket_tablet.close()
+#         except Exception as e:
+#             self.get_logger().error(f"An unexpected error occurred: {e}")
+#             # if self.client_socket_tablet:
+#             #     self.client_socket_tablet.close()
+#             if self.host_socket_tablet is not None:
+#                 self.host_socket_tablet.close()
+#                 self.host_socket_tablet = None
 
     def stop_all_threads(self):
 
