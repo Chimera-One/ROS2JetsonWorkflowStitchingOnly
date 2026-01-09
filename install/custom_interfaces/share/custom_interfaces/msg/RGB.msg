@@ -1,0 +1,16 @@
+# primitives
+string name
+float64 gps_latitude
+float64 gps_longitude
+float64 gps_altitude
+int32 gps_signal_level
+float64 compass
+float64 roll
+float64 pitch
+float64 yaw
+float64 gimbal_roll
+float64 gimbal_pitch
+float64 gimbal_yaw
+
+#existing ROS message
+sensor_msgs/Image image

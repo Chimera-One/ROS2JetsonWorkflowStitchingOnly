@@ -3,9 +3,14 @@
 <package format="3">
   <name>chimera_stitching</name>
   <version>0.0.0</version>
-  <description>TODO: Package description</description>
-  <maintainer email="kdw8731@gmail.com">chimera</maintainer>
+  <description>Stitching the inferenced images from Jetson 1 on this Nvidia Jetson 2</description>
+  <maintainer email="ai@chimera.vision">chimera</maintainer>
   <license>Apache-2.0</license>
+
+  <build_depend>custom_interfaces</build_depend>
+
+  <exec_depend>std_msgs</exec_depend>
+  <exec_depend>custom_interfaces</exec_depend>
 
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>

@@ -14,7 +14,7 @@ setup(
     install_requires=['setuptools'],
     zip_safe=True,
     maintainer='chimera',
-    maintainer_email='kdw8731@gmail.com',
+    maintainer_email='ai@chimera.vision',
     description='TODO: Package description',
     license='Apache-2.0',
     extras_require={

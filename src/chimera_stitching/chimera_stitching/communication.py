@@ -15,6 +15,7 @@ from std_msgs.msg import Float32, String
 from sensor_msgs.msg import Image
 from PIL import Image as PILImage
 from std_srvs.srv import Trigger
+from custom_interfaces.msg import RGB
 
 import struct
 
@@ -145,6 +146,14 @@ class ReceiveData(Node):
         self.roll = 0.0
         self.pitch = 0.0
         self.yaw = 0.0
+        self.gimbal_roll = 0.0
+        self.gimbal_pitch = 0.0
+        self.gimbal_yaw = 0.0
+        self.yaw_and_gimbal_yaw_combined = 0.0
+        self.yaw_and_gimbal_yaw_combined_past = 0.0
+
+        self.pose_filter_triggered = False
+        
 
         #mutex for writing to file
         self.csv_lock = threading.Lock()
@@ -162,7 +171,7 @@ class ReceiveData(Node):
         self.mission_publisher_ = self.create_publisher(String, "mission_completion", qos_profile=qos_settings)
         self.mission_publisher_check_ = self.create_client(Trigger, "mission_completion_check") # , qos_profile=qos_settings)
         # self.rgb_subscriber_ = self.create_subscription(Image, "stitched_rgb", self.store_stitched_rgb, qos_profile=qos_settings)
-        self.rgb_subscriber_ = self.create_subscription(Image, "rgb_images", self.store_rgbs, qos_profile=qos_settings)
+        self.rgb_subscriber_ = self.create_subscription(RGB, "rgb_images", self.store_rgbs, qos_profile=qos_settings)
         self.mask_subscriber_ = self.create_subscription(Image, "mask_images", self.store_masks, qos_profile=qos_settings)
         self.heatmap_subscriber_ = self.create_subscription(Image, "heatmaps", self.store_heatmaps, qos_profile=qos_settings)
         self.stitched_image_to_bytes = None
@@ -176,7 +185,7 @@ class ReceiveData(Node):
         #tracking segmented images
         self.rgb_buffer = []
         self.mask_buffer = []
-        self.gps_buffer = []
+        self.gps_buffer = []    
         self.heatmap_buffer = []
         self.rpy_buffer = []
 
@@ -231,7 +240,7 @@ class ReceiveData(Node):
         self.health_buffer = []
 
         self.last_image_time = time.monotonic()
-        self.stitch_timeout_sec = 10.0
+        self.stitch_timeout_sec = 20.0
 
 
 
@@ -333,9 +342,26 @@ class ReceiveData(Node):
     
 
     def store_rgbs(self, msg):
-        self.get_logger().info("Received rgb")
+        self.get_logger().info(f"Received rgb. name: {msg.name}, lat: {msg.gps_latitude}, long: {msg.gps_longitude}, alt: {msg.gps_altitude}, roll: {msg.roll}, pitch: {msg.pitch}, yaw: {msg.yaw}, g_roll: {msg.gimbal_roll}, g_pitch: {msg.gimbal_pitch}, g_yaw: {msg.gimbal_yaw}")
 
-        cv_rgb = self.bridge.imgmsg_to_cv2(msg)
+        cv_rgb = self.bridge.imgmsg_to_cv2(msg.image)
+        
+        self.gps_lat = msg.gps_latitude
+        self.gps_long = msg.gps_longitude
+        self.gps_alt = msg.gps_altitude
+
+        self.roll = msg.roll
+        self.pitch = msg.pitch
+        self.yaw = msg.pitch
+
+        self.gimbal_roll = msg.gimbal_roll
+        self.gimbal_pitch = msg.gimbal_pitch
+        self.gimbal_yaw = msg.gimbal_yaw
+        
+        self.yaw_and_gimbal_yaw_combined_past = self.yaw_and_gimbal_yaw_combined
+        self.yaw_and_gimbal_yaw_combined = self.yaw + self.gimbal_yaw
+        if abs(abs(self.yaw_and_gimbal_yaw_combined_past) - abs(self.yaw_and_gimbal_yaw_combined)) > 30:
+            self.pose_filter_triggered
 
         cv_rgb = cv2.resize(cv_rgb, (1024, 768), interpolation=cv2.INTER_AREA)
 
@@ -347,8 +373,8 @@ class ReceiveData(Node):
 
 
         #store rgb debug
-        timestamp = datetime.now(self.pst_tz).strftime("%Y%m%d_%H%M%S_%f")
-        rgb_filepath = os.path.join(self.rgb_dir, f"rgb_{timestamp}.png")
+        # timestamp = datetime.now(self.pst_tz).strftime("%Y%m%d_%H%M%S_%f")
+        rgb_filepath = os.path.join(self.rgb_dir, f"{msg.name}.png")
 
 
         cv2.imwrite(rgb_filepath, cv_rgb) 
@@ -375,8 +401,8 @@ class ReceiveData(Node):
 
 
         #store heatmaps debug
-        timestamp = datetime.now(self.pst_tz).strftime("%Y%m%d_%H%M%S_%f")
-        heatmap_filepath = os.path.join(self.heatmap_dir, f"heatmap_{timestamp}.png")
+        # timestamp = datetime.now(self.pst_tz).strftime("%Y%m%d_%H%M%S_%f")
+        heatmap_filepath = os.path.join(self.heatmap_dir, f"{msg.header.frame_id}.png")
 
 
         cv2.imwrite(heatmap_filepath, cv_heatmap) 
@@ -404,8 +430,8 @@ class ReceiveData(Node):
         #     self.mask_buffer.append(mask_to_bytes)
 
 
-        timestamp = datetime.now(self.pst_tz).strftime("%Y%m%d_%H%M%S_%f")
-        mask_filepath = os.path.join(self.mask_dir, f"mask_{timestamp}.png")
+        # timestamp = datetime.now(self.pst_tz).strftime("%Y%m%d_%H%M%S_%f")
+        mask_filepath = os.path.join(self.mask_dir, f"{msg.header.frame_id}.png")
 
         cv2.imwrite(mask_filepath, cv_mask)
         self.last_image_time = time.monotonic()
