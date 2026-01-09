@@ -58,18 +58,25 @@ class StitchingNode(Node):
         self.is_stitch_ready = False
         self.is_stitch_done = False
 
+        self.to_be_pose_filtered = []
+
 
         self.bridge = CvBridge()
 
         qos_settings = QoSProfile(history=QoSHistoryPolicy.KEEP_LAST, depth=15, reliability=QoSReliabilityPolicy.RELIABLE, durability=QoSDurabilityPolicy.TRANSIENT_LOCAL)
         self.stitch_signaller = self.create_subscription(String, 'mission_completion', self.stitch_signal, qos_profile=qos_settings)
-
+        self.pose_filter_subscription = self.create_subscription(String, 'pose_filter', self.pose_filter, qos_profile=qos_settings)
         self.stitched_rgb = self.create_publisher(Image, 'stitched_rgb', qos_profile=qos_settings)
 
         startup_thread = threading.Thread(target=self.waiting_for_startup)
         startup_thread.start()
 
         #@TODO: Need to destroy threads in stop sequence
+
+
+    def pose_filter(self, msg):
+        self.get_logger().info(f"Pose filtering {msg.data}")
+        self.to_be_pose_filtered.append(msg.data)
 
 
     def stitch_signal(self, msg):
@@ -219,6 +226,24 @@ class StitchingNode(Node):
         sorted_images = sort_by_filename(all_image_files)
         sorted_masks = sort_by_filename(all_mask_image_files)
         sorted_heatmaps = sort_by_filename(all_heatmap_image_files)
+
+        self.get_logger().info(f"{len(sorted_images)} number of images before pose filtering")
+        self.get_logger().info(f"Removing {self.to_be_pose_filtered} out from the list")
+        original_number_of_images = len(sorted_images)
+
+        def filter_files(file_list, blacklist):
+            """Remove files whose basename is in blacklist."""
+            blacklist_set = set(blacklist)  # faster lookup
+            return [
+                f for f in file_list
+                if os.path.basename(f) not in blacklist_set
+            ]
+        
+        sorted_images = filter_files(sorted_images, self.to_be_pose_filtered)
+        sorted_masks = filter_files(sorted_masks, self.to_be_pose_filtered)
+        sorted_heatmaps = filter_files(sorted_heatmaps, self.to_be_pose_filtered)
+
+        self.get_logger().info(f"{len(sorted_images)} number of images after pose filtering. {original_number_of_images - len(sorted_images)} images filtered")
 
         # Optional: Safety check to ensure lists are aligned
         if len(sorted_images) != len(sorted_masks) or len(sorted_masks) != len(sorted_heatmaps):

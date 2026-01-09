@@ -174,6 +174,8 @@ class ReceiveData(Node):
         self.rgb_subscriber_ = self.create_subscription(RGB, "rgb_images", self.store_rgbs, qos_profile=qos_settings)
         self.mask_subscriber_ = self.create_subscription(Image, "mask_images", self.store_masks, qos_profile=qos_settings)
         self.heatmap_subscriber_ = self.create_subscription(Image, "heatmaps", self.store_heatmaps, qos_profile=qos_settings)
+        self.pose_filter_publisher = self.create_publisher(String, 'pose_filter', qos_profile=qos_settings)
+
         self.stitched_image_to_bytes = None
         self.stitch_req = False
         self.stitch_request_in_flight = False
@@ -352,7 +354,7 @@ class ReceiveData(Node):
 
         self.roll = msg.roll
         self.pitch = msg.pitch
-        self.yaw = msg.pitch
+        self.yaw = msg.yaw
 
         self.gimbal_roll = msg.gimbal_roll
         self.gimbal_pitch = msg.gimbal_pitch
@@ -362,6 +364,10 @@ class ReceiveData(Node):
         self.yaw_and_gimbal_yaw_combined = self.yaw + self.gimbal_yaw
         if abs(abs(self.yaw_and_gimbal_yaw_combined_past) - abs(self.yaw_and_gimbal_yaw_combined)) > 30:
             self.pose_filter_triggered
+            pose_filter_msg = String()
+            pose_filter_msg.data = msg.image.header.frame_id
+            self.pose_filter_publisher.publish(pose_filter_msg)
+            self.get_logger().inf(f"Pose filtered {msg.image.header.frame_id}. yaw: {self.yaw}, gimbal yaw: {self.gimbal_yaw}, combined: {self.yaw_and_gimbal_yaw_combined}, combined last: {self.yaw_and_gimbal_yaw_combined_past}")
 
         cv_rgb = cv2.resize(cv_rgb, (1024, 768), interpolation=cv2.INTER_AREA)
 
