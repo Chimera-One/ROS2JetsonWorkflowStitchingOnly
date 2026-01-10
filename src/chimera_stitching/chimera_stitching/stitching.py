@@ -232,11 +232,10 @@ class StitchingNode(Node):
         original_number_of_images = len(sorted_images)
 
         def filter_files(file_list, blacklist):
-            """Remove files whose basename is in blacklist."""
-            blacklist_set = set(blacklist)  # faster lookup
+            blacklist_set = set(blacklist)
             return [
                 f for f in file_list
-                if os.path.basename(f) not in blacklist_set
+                if os.path.splitext(os.path.basename(f))[0] not in blacklist_set
             ]
         
         sorted_images = filter_files(sorted_images, self.to_be_pose_filtered)

@@ -34,11 +34,16 @@ import csv
 import io
 import os
 
-
 #Image msgs
 import cv2
 from cv_bridge import CvBridge
 import numpy as np
+
+#Transforms
+from transforms3d import _gohlketransforms, euler, quaternions
+
+#Math
+import math
 
 HOST = "None"
 PORT = 6060
@@ -149,8 +154,9 @@ class ReceiveData(Node):
         self.gimbal_roll = 0.0
         self.gimbal_pitch = 0.0
         self.gimbal_yaw = 0.0
-        self.yaw_and_gimbal_yaw_combined = 0.0
-        self.yaw_and_gimbal_yaw_combined_past = 0.0
+        
+        self.yaw_and_gimbal_quaternion = None
+        self.yaw_and_gimbal_quaternion_past = None
 
         self.pose_filter_triggered = False
         
@@ -340,59 +346,102 @@ class ReceiveData(Node):
             self.stitch_request_in_flight = False
 
 
-
+    def unwrap_angle(self, curr, prev):
+        diff = curr - prev
+        if diff > 180:
+            return curr - 360
+        elif diff < -180:
+            return curr + 360
+        return curr
     
 
     def store_rgbs(self, msg):
-        self.get_logger().info(f"Received rgb. name: {msg.name}, lat: {msg.gps_latitude}, long: {msg.gps_longitude}, alt: {msg.gps_altitude}, roll: {msg.roll}, pitch: {msg.pitch}, yaw: {msg.yaw}, g_roll: {msg.gimbal_roll}, g_pitch: {msg.gimbal_pitch}, g_yaw: {msg.gimbal_yaw}")
+        # self.get_logger().info(f"Received rgb. name: {msg.name}, lat: {msg.gps_latitude}, long: {msg.gps_longitude}, alt: {msg.gps_altitude}, roll: {msg.roll}, pitch: {msg.pitch}, yaw: {msg.yaw}, g_roll: {msg.gimbal_roll}, g_pitch: {msg.gimbal_pitch}, g_yaw: {msg.gimbal_yaw}")
 
-        cv_rgb = self.bridge.imgmsg_to_cv2(msg.image)
-        
-        self.gps_lat = msg.gps_latitude
-        self.gps_long = msg.gps_longitude
-        self.gps_alt = msg.gps_altitude
+        try:
+            self.get_logger().info(f"Received rgb. name: {msg.name}")
 
-        self.roll = msg.roll
-        self.pitch = msg.pitch
-        self.yaw = msg.yaw
+            cv_rgb = self.bridge.imgmsg_to_cv2(msg.image)
+            
+            self.gps_lat = msg.gps_latitude
+            self.gps_long = msg.gps_longitude
+            self.gps_alt = msg.gps_altitude
 
-        self.gimbal_roll = msg.gimbal_roll
-        self.gimbal_pitch = msg.gimbal_pitch
-        self.gimbal_yaw = msg.gimbal_yaw
-        
-        self.yaw_and_gimbal_yaw_combined_past = self.yaw_and_gimbal_yaw_combined
-        self.yaw_and_gimbal_yaw_combined = self.yaw + self.gimbal_yaw
-        if self.yaw_and_gimbal_yaw_combined_past == 0.0:
-            self.yaw_and_gimbal_yaw_combined_past = self.yaw_and_gimbal_yaw_combined
+            self.roll = msg.roll
+            self.pitch = msg.pitch
+            self.yaw = msg.yaw
 
-        if abs(abs(self.yaw_and_gimbal_yaw_combined_past) - abs(self.yaw_and_gimbal_yaw_combined)) > 30:
-            self.pose_filter_triggered
-            pose_filter_msg = String()
-            pose_filter_msg.data = msg.image.header.frame_id
-            self.pose_filter_publisher.publish(pose_filter_msg)
-            self.get_logger().info(f"Pose filtered {msg.image.header.frame_id}. yaw: {self.yaw}, gimbal yaw: {self.gimbal_yaw}, combined: {self.yaw_and_gimbal_yaw_combined}, combined last: {self.yaw_and_gimbal_yaw_combined_past}")
+            self.gimbal_roll = msg.gimbal_roll
+            self.gimbal_pitch = msg.gimbal_pitch
+            self.gimbal_yaw = msg.gimbal_yaw
 
-        cv_rgb = cv2.resize(cv_rgb, (1024, 768), interpolation=cv2.INTER_AREA)
+            Quaternion_flight_yaw = _gohlketransforms.quaternion_from_euler(math.radians(self.roll), math.radians(self.pitch), math.radians(self.yaw), 'sxyz')
+            Quaternion_gimbal_yaw = _gohlketransforms.quaternion_from_euler(math.radians(self.gimbal_roll), math.radians(self.gimbal_pitch), math.radians(self.gimbal_yaw), 'sxyz')
+            Quaternion_flight_yaw = Quaternion_flight_yaw / np.linalg.norm(Quaternion_flight_yaw)
+            Quaternion_gimbal_yaw = Quaternion_gimbal_yaw / np.linalg.norm(Quaternion_gimbal_yaw)
+            self.get_logger().info(f"Quaternion_flight_yaw: {Quaternion_flight_yaw}")
+            self.get_logger().info(f"Quaternion_gimbal_yaw: {Quaternion_gimbal_yaw}")
+            self.yaw_and_gimbal_quaternion =  _gohlketransforms.quaternion_multiply(Quaternion_flight_yaw, Quaternion_gimbal_yaw)
+            
+            if self.yaw_and_gimbal_quaternion_past is not None:
 
-        rgb_encoded = cv2.imencode('.png', cv_rgb)[1]
-        rgb_to_bytes = rgb_encoded.tobytes()
+                # enforce same hemisphere
+                if np.dot(self.yaw_and_gimbal_quaternion, self.yaw_and_gimbal_quaternion_past) < 0:
+                    self.yaw_and_gimbal_quaternion = - self.yaw_and_gimbal_quaternion
 
-        # with self.rgb_buffer_lock:
-        #     self.rgb_buffer.append(rgb_to_bytes)
+                forward_curr = quaternions.rotate_vector(np.array([0, 0, 1]), self.yaw_and_gimbal_quaternion)
+                forward_past = quaternions.rotate_vector(np.array([0, 0, 1]), self.yaw_and_gimbal_quaternion_past)
+
+                # q_rel = _gohlketransforms.quaternion_multiply(
+                #     self.yaw_and_gimbal_quaternion,
+                #     _gohlketransforms.quaternion_inverse(self.yaw_and_gimbal_quaternion_past)
+                # )
+                
+
+                dot = np.clip(np.dot(forward_curr, forward_past), -1.0, 1.0)
+                angle = math.acos(dot)
+
+                # angle = 2 * math.acos(np.clip(abs(q_rel[0]), -1.0, 1.0))
+            else:
+                self.yaw_and_gimbal_quaternion_past = self.yaw_and_gimbal_quaternion.copy()
+                angle = 0
+
+            # vector_of_yaw_and_gimbal_quaternion = quaternions.rotate_vector(_gohlketransforms.unit_vector(np.array([0, 0, 1])), self.yaw_and_gimbal_quaternion, True)
+            # vector_of_yaw_and_gimbal_quaternion_past = quaternions.rotate_vector(_gohlketransforms.unit_vector(np.array([0, 0, 1])), self.yaw_and_gimbal_quaternion_past, True)
+            # angle_between_two_quaternions = _gohlketransforms.angle_between_vectors(vector_of_yaw_and_gimbal_quaternion, vector_of_yaw_and_gimbal_quaternion_past)
+
+            self.get_logger().info(f"Angle between current frame {msg.name} and past frame: {angle:.4f}. roll: {msg.roll}, pitch: {msg.pitch}, yaw: {msg.yaw}, g_roll: {msg.gimbal_roll}, g_pitch: {msg.gimbal_pitch}, g_yaw: {msg.gimbal_yaw}")
+
+            if  angle > math.pi / 6:
+                self.pose_filter_triggered
+                pose_filter_msg = String()
+                pose_filter_msg.data = msg.name
+                self.pose_filter_publisher.publish(pose_filter_msg)
+                self.get_logger().info(f"---Pose filtered {msg.name}")
 
 
-        #store rgb debug
-        # timestamp = datetime.now(self.pst_tz).strftime("%Y%m%d_%H%M%S_%f")
-        rgb_filepath = os.path.join(self.rgb_dir, f"{msg.name}.png")
+            cv_rgb = cv2.resize(cv_rgb, (1024, 768), interpolation=cv2.INTER_AREA)
+
+            rgb_encoded = cv2.imencode('.png', cv_rgb)[1]
+            rgb_to_bytes = rgb_encoded.tobytes()
+
+            # with self.rgb_buffer_lock:
+            #     self.rgb_buffer.append(rgb_to_bytes)
 
 
-        cv2.imwrite(rgb_filepath, cv_rgb) 
-        self.last_image_time = time.monotonic()
+            #store rgb debug
+            # timestamp = datetime.now(self.pst_tz).strftime("%Y%m%d_%H%M%S_%f")
+            rgb_filepath = os.path.join(self.rgb_dir, f"{msg.name}.png")
 
-        # heatmap_pil.save(heatmap_filepath)
-        # with self.rgb_png:
-        #     self.rgb_png_buffer.append(rgb_filepath)
-        
+
+            cv2.imwrite(rgb_filepath, cv_rgb) 
+            self.last_image_time = time.monotonic()
+
+            # heatmap_pil.save(heatmap_filepath)
+            # with self.rgb_png:
+            #     self.rgb_png_buffer.append(rgb_filepath)
+        except Exception as e:
+            self.get_logger().error(f"RGB receive failed: {e}")
 
 
     def store_heatmaps(self, msg):
