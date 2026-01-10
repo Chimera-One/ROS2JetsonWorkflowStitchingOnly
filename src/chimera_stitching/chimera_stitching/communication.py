@@ -362,12 +362,15 @@ class ReceiveData(Node):
         
         self.yaw_and_gimbal_yaw_combined_past = self.yaw_and_gimbal_yaw_combined
         self.yaw_and_gimbal_yaw_combined = self.yaw + self.gimbal_yaw
+        if self.yaw_and_gimbal_yaw_combined_past == 0.0:
+            self.yaw_and_gimbal_yaw_combined_past = self.yaw_and_gimbal_yaw_combined
+
         if abs(abs(self.yaw_and_gimbal_yaw_combined_past) - abs(self.yaw_and_gimbal_yaw_combined)) > 30:
             self.pose_filter_triggered
             pose_filter_msg = String()
             pose_filter_msg.data = msg.image.header.frame_id
             self.pose_filter_publisher.publish(pose_filter_msg)
-            self.get_logger().inf(f"Pose filtered {msg.image.header.frame_id}. yaw: {self.yaw}, gimbal yaw: {self.gimbal_yaw}, combined: {self.yaw_and_gimbal_yaw_combined}, combined last: {self.yaw_and_gimbal_yaw_combined_past}")
+            self.get_logger().info(f"Pose filtered {msg.image.header.frame_id}. yaw: {self.yaw}, gimbal yaw: {self.gimbal_yaw}, combined: {self.yaw_and_gimbal_yaw_combined}, combined last: {self.yaw_and_gimbal_yaw_combined_past}")
 
         cv_rgb = cv2.resize(cv_rgb, (1024, 768), interpolation=cv2.INTER_AREA)
 
