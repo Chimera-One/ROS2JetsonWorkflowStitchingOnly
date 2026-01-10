@@ -419,7 +419,8 @@ class ReceiveData(Node):
                 self.pose_filter_publisher.publish(pose_filter_msg)
                 self.get_logger().info(f"---Pose filtered {msg.name}")
 
-
+            self.yaw_and_gimbal_quaternion_past = self.yaw_and_gimbal_quaternion.copy()
+            
             cv_rgb = cv2.resize(cv_rgb, (1024, 768), interpolation=cv2.INTER_AREA)
 
             rgb_encoded = cv2.imencode('.png', cv_rgb)[1]
