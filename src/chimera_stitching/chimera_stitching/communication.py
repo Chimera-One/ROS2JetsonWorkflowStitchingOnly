@@ -248,7 +248,7 @@ class ReceiveData(Node):
         self.health_buffer = []
 
         self.last_image_time = time.monotonic()
-        self.stitch_timeout_sec = 20.0
+        self.stitch_timeout_sec = 25.0
 
 
 
@@ -421,7 +421,7 @@ class ReceiveData(Node):
 
             self.yaw_and_gimbal_quaternion_past = self.yaw_and_gimbal_quaternion.copy()
             
-            cv_rgb = cv2.resize(cv_rgb, (1024, 768), interpolation=cv2.INTER_AREA)
+            cv_rgb = cv2.resize(cv_rgb, (1920, 1440), interpolation=cv2.INTER_AREA)
 
             rgb_encoded = cv2.imencode('.png', cv_rgb)[1]
             rgb_to_bytes = rgb_encoded.tobytes()
@@ -450,7 +450,7 @@ class ReceiveData(Node):
 
         cv_heatmap = self.bridge.imgmsg_to_cv2(msg)
 
-        cv_heatmap = cv2.resize(cv_heatmap, (1024, 768), interpolation=cv2.INTER_AREA)
+        cv_heatmap = cv2.resize(cv_heatmap, (1920, 1440), interpolation=cv2.INTER_AREA)
 
         heatmap_encoded = cv2.imencode('.png', cv_heatmap)[1]
         heatmap_to_bytes = heatmap_encoded.tobytes()
@@ -480,7 +480,7 @@ class ReceiveData(Node):
 
         cv_mask = self.bridge.imgmsg_to_cv2(msg)
 
-        cv_mask = cv2.resize(cv_mask, (1024,768), interpolation=cv2.INTER_AREA)
+        cv_mask = cv2.resize(cv_mask, (1920, 1440), interpolation=cv2.INTER_AREA)
 
         mask_encode = cv2.imencode('.png', cv_mask)[1]
         mask_to_bytes = mask_encode.tobytes()
