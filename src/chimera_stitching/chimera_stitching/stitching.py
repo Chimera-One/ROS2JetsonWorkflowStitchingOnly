@@ -11,7 +11,7 @@ from rclpy.executors import MultiThreadedExecutor, SingleThreadedExecutor
 #Msgs 
 from std_msgs.msg import String
 from sensor_msgs.msg import Image
-
+from custom_interfaces.msg import StitchData
 
 import os, glob
 import re
@@ -37,10 +37,16 @@ import time
 #Resetting
 import subprocess
 
+#Math
+import math
+
 
 INCLUDE_DIR = "/home/chimera/ros2_ws/src/chimera_stitching/include"
 SCRIPT_PATH = "/home/chimera/scripts/mission_reset.sh"
 CONFIG_PATH = os.path.join(INCLUDE_DIR, "config.yaml")
+
+R_EARTH = 6378137.0  # meters
+CALIBRATED_FOCAL_LENGTH = 3725.151611
 
 
 class StitchingNode(Node):
@@ -64,12 +70,15 @@ class StitchingNode(Node):
         self.bridge = CvBridge()
 
         qos_settings = QoSProfile(history=QoSHistoryPolicy.KEEP_LAST, depth=15, reliability=QoSReliabilityPolicy.RELIABLE, durability=QoSDurabilityPolicy.TRANSIENT_LOCAL)
-        self.stitch_signaller = self.create_subscription(String, 'mission_completion', self.stitch_signal, qos_profile=qos_settings)
+        self.stitch_signaller = self.create_subscription(StitchData, 'mission_completion', self.stitch_signal, qos_profile=qos_settings)
         self.pose_filter_subscription = self.create_subscription(String, 'pose_filter', self.pose_filter, qos_profile=qos_settings)
         self.stitched_rgb = self.create_publisher(Image, 'stitched_rgb', qos_profile=qos_settings)
 
         startup_thread = threading.Thread(target=self.waiting_for_startup)
         startup_thread.start()
+
+        # List of GPSs for StitchData
+        self.image_data = None
 
         #@TODO: Need to destroy threads in stop sequence
 
@@ -80,15 +89,36 @@ class StitchingNode(Node):
 
 
     def stitch_signal(self, msg):
-
         self.get_logger().info("Received stitching msg")
 
-        if msg.data == "MISSION FINISHED":
-            self.is_stitch_ready = True
+        if msg.data != "MISSION FINISHED":
+            return
+
+        self.image_data = {}
+
+        for name, lat, lon, alt in zip(
+            msg.names,
+            msg.gps_latitude,
+            msg.gps_longitude,
+            msg.gps_altitude
+        ):
+            self.image_data[name] = {
+                "lat": lat,
+                "lon": lon,
+                "alt": alt,
+                "image_path": None,
+                "mask_path": None,
+                "heatmap_path": None
+            }
+
+        self.is_stitch_ready = True
 
 
-    def waiting_for_startup(self): 
 
+
+    def waiting_for_startup(self):
+
+        iteration = 1
 
         try: 
 
@@ -104,10 +134,27 @@ class StitchingNode(Node):
                     self.heatmap_images = []
 
                     self.config = self.load_config(CONFIG_PATH)
-                    self.image_paths, self.mask_paths, self.heatmap_paths = self.get_image_paths(self.config)
+                    # self.image_paths, self.mask_paths, self.heatmap_paths = self.get_image_paths(self.config)
 
+                    print(f"Iteration: {iteration}")
+
+                    self.get_image_paths(self.config)
+                    self.apply_pose_filtering()
+                    self.validate_image_data()
+
+                    # Create ordered lists ONLY for stitching pipeline
+                    ordered_items = sorted(self.image_data.items())
+
+                    self.image_paths = [data["image_path"] for _, data in ordered_items]
+                    self.mask_paths = [data["mask_path"] for _, data in ordered_items]
+                    self.heatmap_paths = [data["heatmap_path"] for _, data in ordered_items]
+
+                    print("processing bounding box...")
+
+                    bb_x_min, bb_x_max, bb_y_min, bb_y_max = self.process_bounding_box()
+
+                    print(f"Bounding box processed. bb_x_min: {bb_x_min}, bb_x_max: {bb_x_max}, bb_y_min: {bb_y_min}, bb_y_max: {bb_y_max}")
                     print("processing images...")
-
 
                     processed_count = 0
                     total_images = len(self.image_paths)
@@ -147,19 +194,49 @@ class StitchingNode(Node):
                     panorama, panorama_mask, panorama_heatmap = self.stitch_images(self.original_images, self.mask_images, self.heatmap_images, transformations, all_corners)
                     print("Stitching Pipeline completed.")
 
+                    panorama_height, panorama_width = panorama.shape[:2]
+                    bb_width = int(np.ceil(bb_x_max - bb_x_min))
+                    bb_height = int(np.ceil(bb_y_max - bb_y_min))
 
-                    panorama_msg = self.bridge.cv2_to_imgmsg(panorama, encoding="bgr8")
-                    panorama_msg.header.stamp = self.get_clock().now().to_msg()
-                    panorama_msg.header.frame_id = "camera_frame"
+                    if panorama_width <= bb_width and panorama_height <= bb_height:
+                        print(f"--- Panorama fits inside the bounding box. Iteration: {iteration}")
+                        panorama_msg = self.bridge.cv2_to_imgmsg(panorama, encoding="bgr8")
+                        panorama_msg.header.stamp = self.get_clock().now().to_msg()
+                        panorama_msg.header.frame_id = "camera_frame"
 
-                    self.stitched_rgb.publish(panorama_msg)
+                        self.stitched_rgb.publish(panorama_msg)
 
-                    cv2.imwrite(os.path.join(self.config['output_dir'], self.config['output_filename']) + ".png", panorama)
-                    cv2.imwrite(os.path.join(self.config['output_dir'], self.config['output_filename']) + "_mask.png", panorama_mask)
-                    cv2.imwrite(os.path.join(self.config['output_dir'], self.config['output_filename']) + "_heatmap.png", panorama_heatmap)
+                        cv2.imwrite(os.path.join(self.config['output_dir'], self.config['output_filename']) + iteration + ".png", panorama)
+                        cv2.imwrite(os.path.join(self.config['output_dir'], self.config['output_filename']) + iteration + "_mask.png", panorama_mask)
+                        cv2.imwrite(os.path.join(self.config['output_dir'], self.config['output_filename']) + iteration + "_heatmap.png", panorama_heatmap)
 
-                    self.is_stitch_ready = False
-                    self.is_dir_reset = False
+                        self.is_stitch_ready = False
+                        self.is_dir_reset = False
+                    else:
+                        print(f"--- Panorama EXCEEDS the bounding box. Iteration: {iteration}")
+                        print(f"Panorama size: ({panorama_width}, {panorama_height})")
+                        print(f"Bounding box size: ({bb_width}, {bb_height})")
+
+                        cv2.imwrite(os.path.join(self.config['output_dir'], self.config['output_filename']) + iteration + ".png", panorama)
+                        cv2.imwrite(os.path.join(self.config['output_dir'], self.config['output_filename']) + iteration + "_mask.png", panorama_mask)
+                        cv2.imwrite(os.path.join(self.config['output_dir'], self.config['output_filename']) + iteration + "_heatmap.png", panorama_heatmap)
+
+                        iteration = iteration + 1
+
+
+
+#                     panorama_msg = self.bridge.cv2_to_imgmsg(panorama, encoding="bgr8")
+#                     panorama_msg.header.stamp = self.get_clock().now().to_msg()
+#                     panorama_msg.header.frame_id = "camera_frame"
+# 
+#                     self.stitched_rgb.publish(panorama_msg)
+# 
+#                     cv2.imwrite(os.path.join(self.config['output_dir'], self.config['output_filename']) + ".png", panorama)
+#                     cv2.imwrite(os.path.join(self.config['output_dir'], self.config['output_filename']) + "_mask.png", panorama_mask)
+#                     cv2.imwrite(os.path.join(self.config['output_dir'], self.config['output_filename']) + "_heatmap.png", panorama_heatmap)
+# 
+#                     self.is_stitch_ready = False
+#                     self.is_dir_reset = False
 
                 else: 
                     self.get_logger().info("Waiting for Mission Completion")
@@ -206,10 +283,37 @@ class StitchingNode(Node):
         config["device"] = torch.device(config["device"] if torch.cuda.is_available() and config["device"] == "cuda" else "cpu")
         print("Configuration loaded successfully.")
         return config
+    
+    def apply_pose_filtering(self):
+        if not self.to_be_pose_filtered:
+            return
 
+        blacklist = set(self.to_be_pose_filtered)
+        before = len(self.image_data)
+
+        self.image_data = {
+            name: data
+            for name, data in self.image_data.items()
+            if name not in blacklist
+        }
+
+        after = len(self.image_data)
+        self.get_logger().info(f"Pose filtering removed {before - after} images")
+
+
+    def validate_image_data(self):
+        for name, data in self.image_data.items():
+            for k in ["image_path", "mask_path", "heatmap_path"]:
+                if data[k] is None:
+                    self.get_logger().warn(f"{name} missing {k}")
+
+    
 
     def get_image_paths(self, config):
         """Get sorted image paths based on timestamps from filenames."""
+
+        def basename_no_ext(path):
+            return os.path.splitext(os.path.basename(path))[0]
 
         all_image_files = glob.glob(os.path.join(config["image_directory"], '*.*'))
         
@@ -218,43 +322,25 @@ class StitchingNode(Node):
         all_mask_image_files = glob.glob(os.path.join(config["mask_image_directory"], '*.*'))
         all_heatmap_image_files = glob.glob(os.path.join(config["heatmap_image_directory"], '*.*'))
 
-        def sort_by_filename(file_list):
-            """Helper to sort files alphabetically by their filename."""
-            return sorted(file_list, key=lambda x: os.path.basename(x))
+        # Index by name
+        image_map = {basename_no_ext(p): p for p in all_image_files}
+        mask_map = {basename_no_ext(p): p for p in all_mask_image_files}
+        heatmap_map = {basename_no_ext(p): p for p in all_heatmap_image_files}
 
-        # Process both lists
-        sorted_images = sort_by_filename(all_image_files)
-        sorted_masks = sort_by_filename(all_mask_image_files)
-        sorted_heatmaps = sort_by_filename(all_heatmap_image_files)
+        missing = 0
 
-        self.get_logger().info(f"{len(sorted_images)} number of images before pose filtering")
-        self.get_logger().info(f"Removing {self.to_be_pose_filtered} out from the list")
-        original_number_of_images = len(sorted_images)
+        for name, data in self.image_data.items():
+            data["image_path"] = image_map.get(name)
+            data["mask_path"] = mask_map.get(name)
+            data["heatmap_path"] = heatmap_map.get(name)
 
-        def filter_files(file_list, blacklist):
-            blacklist_set = set(blacklist)
-            return [
-                f for f in file_list
-                if os.path.splitext(os.path.basename(f))[0] not in blacklist_set
-            ]
-        
-        sorted_images = filter_files(sorted_images, self.to_be_pose_filtered)
-        sorted_masks = filter_files(sorted_masks, self.to_be_pose_filtered)
-        sorted_heatmaps = filter_files(sorted_heatmaps, self.to_be_pose_filtered)
+            if data["image_path"] is None:
+                missing += 1
 
-        self.get_logger().info(f"{len(sorted_images)} number of images after pose filtering. {original_number_of_images - len(sorted_images)} images filtered")
+        if missing > 0:
+            self.get_logger().warn(f"{missing} images missing image files")
 
-        # Optional: Safety check to ensure lists are aligned
-        if len(sorted_images) != len(sorted_masks) or len(sorted_masks) != len(sorted_heatmaps):
-            print(f"Warning: Found {len(sorted_images)} images but {len(sorted_masks)} masks and {len(sorted_heatmaps)} heapmaps.")
-        else:
-            print(f"Found {len(sorted_images)} images and matching masks to process.")
-
-        return sorted_images, sorted_masks, sorted_heatmaps
-
-        # Sort the image files based on timestamp
-        image_files_with_timestamps.sort(key=lambda x: x[0])
-        return [filepath for _, filepath in image_files_with_timestamps]
+        self.get_logger().info(f"{len(self.image_data)} images indexed via dict")
 
     def extract_timestamp(self, filename):
         """Extract the timestamp from the filename assuming it is a number before the file extension."""
@@ -265,7 +351,95 @@ class StitchingNode(Node):
             return int(match.group(1))
         return None
 
+    def process_bounding_box(self):
+        previous_gps = None
+        previous_image_size = None
+        previous_image_origin = None
 
+        all_corners = []
+
+        for index, (name, data) in enumerate(self.image_data.items()):
+            self.get_logger().info(f"Processing bounding box for image {index}: {name}")
+
+            image_path = data["image_path"]
+
+            # Read image resolution
+            img = cv2.imread(image_path)
+            if img is None:
+                self.get_logger().warn(f"Failed to read image {image_path}")
+                continue
+
+            h, w = img.shape[:2]
+            current_image_size = np.array([w, h], dtype=np.float32)
+
+            # GPS as vector
+            current_gps = np.array([data["lat"], data["lon"], data["alt"]], dtype=np.float32)
+
+            if index == 0:
+                previous_gps = current_gps
+                previous_image_size = current_image_size
+                previous_image_origin = np.array([0, 0], dtype=np.float32)
+
+                # Initial corners at origin
+                corners = np.array([
+                    [-w/2, -h/2],
+                    [-w/2,  h/2],
+                    [ w/2,  h/2],
+                    [ w/2, -h/2]
+                ], dtype=np.float32) + previous_image_origin
+                all_corners.append(corners)
+                continue
+            
+            # Equirectangular approximation
+            dx = (current_gps[1] - previous_gps[1]) * np.cos(np.deg2rad(previous_gps[0])) * 2*np.pi*R_EARTH / 360.0
+            dy = (current_gps[0] - previous_gps[0]) * 2*np.pi*R_EARTH / 360.0
+            dz = current_gps[2] - previous_gps[2]  # altitude difference`
+
+            # Comput pixel offset
+            f_px = CALIBRATED_FOCAL_LENGTH
+            x_px = dx * f_px / previous_gps[2]  # scale by previous altitude
+            y_px = dy * f_px / previous_gps[2]
+
+            # Vector math
+            expected_vector = np.array([x_px, y_px]) # in pixel coordinate
+            expected_scale = current_gps[2] / previous_gps[2]
+
+            # Compute origin and scale
+            current_image_origin = previous_image_origin + expected_vector
+            current_image_size = previous_image_size * expected_scale
+            w_resized, h_resized = current_image_size
+
+            # Compute corners centered at origin
+            current_corners = np.array([
+                [-w_resized/2, -h_resized/2],
+                [-w_resized/2,  h_resized/2],
+                [ w_resized/2,  h_resized/2],
+                [ w_resized/2, -h_resized/2]
+            ], dtype=np.float32) + current_image_origin
+
+            # Optional: rotate corners toward expected_vector
+            # Uncomment if you want rotation
+            # dx, dy = expected_vector[0], expected_vector[1]
+            # theta = atan2(dy, dx)
+            # R = np.array([[cos(theta), -sin(theta)], [sin(theta), cos(theta)]], dtype=np.float32)
+            # current_corners = (R @ current_corners.T).T + current_image_origin
+
+            all_corners.append(current_corners)
+
+            # Update previous values
+            previous_gps = current_gps
+            previous_image_size = current_image_size
+            previous_image_origin = current_image_origin
+
+        # Combine all corners to compute overall bounding box
+        all_corners_np = np.vstack(all_corners)
+        min_x, min_y = all_corners_np.min(axis=0)
+        max_x, max_y = all_corners_np.max(axis=0)
+
+        self.get_logger().info(f"Bounding box: x[{min_x}, {max_x}], y[{min_y}, {max_y}]")
+
+        return min_x, max_x, min_y, max_y, all_corners
+            
 
     def process_image(self, path, config):
         """Load, crop, resize, and extract features from an image."""

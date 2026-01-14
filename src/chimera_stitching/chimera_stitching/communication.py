@@ -16,6 +16,7 @@ from sensor_msgs.msg import Image
 from PIL import Image as PILImage
 from std_srvs.srv import Trigger
 from custom_interfaces.msg import RGB
+from custom_interfaces.msg import StitchData
 
 import struct
 
@@ -174,7 +175,7 @@ class ReceiveData(Node):
 
 
         #stitched images
-        self.mission_publisher_ = self.create_publisher(String, "mission_completion", qos_profile=qos_settings)
+        self.mission_publisher_ = self.create_publisher(StitchData, "mission_completion", qos_profile=qos_settings)
         self.mission_publisher_check_ = self.create_client(Trigger, "mission_completion_check") # , qos_profile=qos_settings)
         # self.rgb_subscriber_ = self.create_subscription(Image, "stitched_rgb", self.store_stitched_rgb, qos_profile=qos_settings)
         self.rgb_subscriber_ = self.create_subscription(RGB, "rgb_images", self.store_rgbs, qos_profile=qos_settings)
@@ -187,7 +188,7 @@ class ReceiveData(Node):
         self.stitch_request_in_flight = False
         self.inference_finished = False
 
-        self.mission_msg = String()
+        self.mission_msg = StitchData()
         self.mission_msg.data = "MISSION FINISHED"
 
         #tracking segmented images
@@ -248,9 +249,13 @@ class ReceiveData(Node):
         self.health_buffer = []
 
         self.last_image_time = time.monotonic()
-        self.stitch_timeout_sec = 25.0
+        self.stitch_timeout_sec = 30.0
 
-
+        # List of GPSs
+        self.gps_long_list = []
+        self.gps_lat_list = []
+        self.gps_alt_list = []
+        self.image_names_list = []
 
 
         #csv frames
@@ -335,6 +340,10 @@ class ReceiveData(Node):
             response = future.result()
             self.stitch_req = response.success
             if self.stitch_req:
+                self.mission_msg.names = self.image_names_list
+                self.mission_msg.gps_latitude = self.gps_lat_list
+                self.mission_msg.gps_longitude = self.gps_long_list
+                self.mission_msg.gps_altitude = self.gps_alt_list
                 self.mission_publisher_.publish(self.mission_msg)
                 self.get_logger().info(f"Stitch request result: True")
             else:
@@ -374,6 +383,11 @@ class ReceiveData(Node):
             self.gimbal_roll = msg.gimbal_roll
             self.gimbal_pitch = msg.gimbal_pitch
             self.gimbal_yaw = msg.gimbal_yaw
+
+            self.gps_lat_list.append(msg.gps_lat)
+            self.gps_long_list.append(msg.gps_long)
+            self.gps_alt_list.append(msg.gps_alt)
+            self.image_names_list.append(msg.name)
 
             Quaternion_flight_yaw = _gohlketransforms.quaternion_from_euler(math.radians(self.roll), math.radians(self.pitch), math.radians(self.yaw), 'sxyz')
             Quaternion_gimbal_yaw = _gohlketransforms.quaternion_from_euler(math.radians(self.gimbal_roll), math.radians(self.gimbal_pitch), math.radians(self.gimbal_yaw), 'sxyz')
