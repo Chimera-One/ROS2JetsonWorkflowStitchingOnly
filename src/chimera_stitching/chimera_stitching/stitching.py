@@ -66,6 +66,8 @@ class StitchingNode(Node):
 
         self.to_be_pose_filtered = []
 
+        self.iteration = 1
+
 
         self.bridge = CvBridge()
 
@@ -118,8 +120,6 @@ class StitchingNode(Node):
 
     def waiting_for_startup(self):
 
-        iteration = 1
-
         try: 
 
             while not self.is_stitch_done:
@@ -136,7 +136,7 @@ class StitchingNode(Node):
                     self.config = self.load_config(CONFIG_PATH)
                     # self.image_paths, self.mask_paths, self.heatmap_paths = self.get_image_paths(self.config)
 
-                    print(f"Iteration: {iteration}")
+                    print(f"Iteration: {self.iteration}")
 
                     self.get_image_paths(self.config)
                     self.apply_pose_filtering()
@@ -199,29 +199,29 @@ class StitchingNode(Node):
                     bb_height = int(np.ceil(bb_y_max - bb_y_min))
 
                     if panorama_width <= bb_width and panorama_height <= bb_height:
-                        print(f"--- Panorama fits inside the bounding box. Iteration: {iteration}")
+                        print(f"--- Panorama fits inside the bounding box. Iteration: {self.iteration}")
                         panorama_msg = self.bridge.cv2_to_imgmsg(panorama, encoding="bgr8")
                         panorama_msg.header.stamp = self.get_clock().now().to_msg()
                         panorama_msg.header.frame_id = "camera_frame"
 
                         self.stitched_rgb.publish(panorama_msg)
 
-                        cv2.imwrite(os.path.join(self.config['output_dir'], self.config['output_filename']) + str(iteration) + ".png", panorama)
-                        cv2.imwrite(os.path.join(self.config['output_dir'], self.config['output_filename']) + str(iteration) + "_mask.png", panorama_mask)
-                        cv2.imwrite(os.path.join(self.config['output_dir'], self.config['output_filename']) + str(iteration) + "_heatmap.png", panorama_heatmap)
+                        cv2.imwrite(os.path.join(self.config['output_dir'], self.config['output_filename']) + str(self.iteration) + ".png", panorama)
+                        cv2.imwrite(os.path.join(self.config['output_dir'], self.config['output_filename']) + str(self.iteration) + "_mask.png", panorama_mask)
+                        cv2.imwrite(os.path.join(self.config['output_dir'], self.config['output_filename']) + str(self.iteration) + "_heatmap.png", panorama_heatmap)
 
                         self.is_stitch_ready = False
                         self.is_dir_reset = False
                     else:
-                        print(f"--- Panorama EXCEEDS the bounding box. Iteration: {iteration}")
+                        print(f"--- Panorama EXCEEDS the bounding box. Iteration: {self.iteration}")
                         print(f"Panorama size: ({panorama_width}, {panorama_height})")
                         print(f"Bounding box size: ({bb_width}, {bb_height})")
 
-                        cv2.imwrite(os.path.join(self.config['output_dir'], self.config['output_filename']) + str(iteration) + ".png", panorama)
-                        cv2.imwrite(os.path.join(self.config['output_dir'], self.config['output_filename']) + str(iteration) + "_mask.png", panorama_mask)
-                        cv2.imwrite(os.path.join(self.config['output_dir'], self.config['output_filename']) + str(iteration) + "_heatmap.png", panorama_heatmap)
+                        cv2.imwrite(os.path.join(self.config['output_dir'], self.config['output_filename']) + str(self.iteration) + ".png", panorama)
+                        cv2.imwrite(os.path.join(self.config['output_dir'], self.config['output_filename']) + str(self.iteration) + "_mask.png", panorama_mask)
+                        cv2.imwrite(os.path.join(self.config['output_dir'], self.config['output_filename']) + str(self.iteration) + "_heatmap.png", panorama_heatmap)
 
-                        iteration = iteration + 1
+                        self.iteration = self.iteration + 1
 
 
 
@@ -543,7 +543,8 @@ class StitchingNode(Node):
             m_kpts1_np = m_kpts1_orig.cpu().numpy()
 
             if len(m_kpts0_np) >= 3:
-                H_affine, inliers = cv2.estimateAffinePartial2D(m_kpts1_np, m_kpts0_np, method=cv2.RANSAC) #can also be 'LMEDS'
+                ransacThreshold = 3.0 / self.iteration
+                H_affine, inliers = cv2.estimateAffinePartial2D(m_kpts1_np, m_kpts0_np, method=cv2.RANSAC, ransacReprojThreshold=ransacThreshold) #can also be 'LMEDS'
                 if H_affine is not None:
                     H = np.vstack([H_affine, [0, 0, 1]])
                     accumulated_H = accumulated_H @ H
@@ -554,7 +555,7 @@ class StitchingNode(Node):
                     rotation_translation = accumulated_H[:2, :]
                     corners_i_transformed = cv2.transform(corners_i.reshape(-1, 1, 2), rotation_translation)
                     all_corners.append(corners_i_transformed.reshape(-1, 2))
-                    print(f"Transformation found between image {i - 1} and image {i}.")
+                    print(f"Transformation found between image {i - 1} and image {i}. RansacThreshold: {ransacThreshold}")
                 else:
                     print(f"Transformation failed between image {i-1} and image {i}.")
             else:
