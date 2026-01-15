@@ -69,15 +69,15 @@ private:
   ::custom_interfaces::msg::StitchData msg_;
 };
 
-class Init_StitchData_name
+class Init_StitchData_names
 {
 public:
-  explicit Init_StitchData_name(::custom_interfaces::msg::StitchData & msg)
+  explicit Init_StitchData_names(::custom_interfaces::msg::StitchData & msg)
   : msg_(msg)
   {}
-  Init_StitchData_gps_latitude name(::custom_interfaces::msg::StitchData::_name_type arg)
+  Init_StitchData_gps_latitude names(::custom_interfaces::msg::StitchData::_names_type arg)
   {
-    msg_.name = std::move(arg);
+    msg_.names = std::move(arg);
     return Init_StitchData_gps_latitude(msg_);
   }
 
@@ -91,10 +91,10 @@ public:
   Init_StitchData_data()
   : msg_(::rosidl_runtime_cpp::MessageInitialization::SKIP)
   {}
-  Init_StitchData_name data(::custom_interfaces::msg::StitchData::_data_type arg)
+  Init_StitchData_names data(::custom_interfaces::msg::StitchData::_data_type arg)
   {
     msg_.data = std::move(arg);
-    return Init_StitchData_name(msg_);
+    return Init_StitchData_names(msg_);
   }
 
 private:

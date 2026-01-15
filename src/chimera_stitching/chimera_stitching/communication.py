@@ -251,7 +251,7 @@ class ReceiveData(Node):
         self.last_image_time = time.monotonic()
         self.stitch_timeout_sec = 30.0
 
-        # List of GPSs
+        # List of GPSs for StitchData
         self.gps_long_list = []
         self.gps_lat_list = []
         self.gps_alt_list = []
@@ -384,9 +384,9 @@ class ReceiveData(Node):
             self.gimbal_pitch = msg.gimbal_pitch
             self.gimbal_yaw = msg.gimbal_yaw
 
-            self.gps_lat_list.append(msg.gps_lat)
-            self.gps_long_list.append(msg.gps_long)
-            self.gps_alt_list.append(msg.gps_alt)
+            self.gps_lat_list.append(msg.gps_latitude)
+            self.gps_long_list.append(msg.gps_longitude)
+            self.gps_alt_list.append(msg.gps_altitude)
             self.image_names_list.append(msg.name)
 
             Quaternion_flight_yaw = _gohlketransforms.quaternion_from_euler(math.radians(self.roll), math.radians(self.pitch), math.radians(self.yaw), 'sxyz')

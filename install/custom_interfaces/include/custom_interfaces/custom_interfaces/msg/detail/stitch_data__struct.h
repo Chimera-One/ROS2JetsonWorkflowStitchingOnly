@@ -19,7 +19,7 @@ extern "C"
 
 // Include directives for member types
 // Member 'data'
-// Member 'name'
+// Member 'names'
 #include "rosidl_runtime_c/string.h"
 // Member 'gps_latitude'
 // Member 'gps_longitude'
@@ -30,7 +30,7 @@ extern "C"
 typedef struct custom_interfaces__msg__StitchData
 {
   rosidl_runtime_c__String data;
-  rosidl_runtime_c__String__Sequence name;
+  rosidl_runtime_c__String__Sequence names;
   rosidl_runtime_c__double__Sequence gps_latitude;
   rosidl_runtime_c__double__Sequence gps_longitude;
   rosidl_runtime_c__double__Sequence gps_altitude;

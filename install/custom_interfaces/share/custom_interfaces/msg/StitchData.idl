@@ -8,7 +8,7 @@ module custom_interfaces {
     struct StitchData {
       string data;
 
-      sequence<string> name;
+      sequence<string> names;
 
       sequence<double> gps_latitude;
 

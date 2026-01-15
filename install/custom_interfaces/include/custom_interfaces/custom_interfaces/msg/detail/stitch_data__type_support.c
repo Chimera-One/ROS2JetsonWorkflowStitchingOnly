@@ -14,7 +14,7 @@
 
 // Include directives for member types
 // Member `data`
-// Member `name`
+// Member `names`
 #include "rosidl_runtime_c/string_functions.h"
 // Member `gps_latitude`
 // Member `gps_longitude`
@@ -40,7 +40,7 @@ void custom_interfaces__msg__StitchData__rosidl_typesupport_introspection_c__Sti
   custom_interfaces__msg__StitchData__fini(message_memory);
 }
 
-size_t custom_interfaces__msg__StitchData__rosidl_typesupport_introspection_c__size_function__StitchData__name(
+size_t custom_interfaces__msg__StitchData__rosidl_typesupport_introspection_c__size_function__StitchData__names(
   const void * untyped_member)
 {
   const rosidl_runtime_c__String__Sequence * member =
@@ -48,7 +48,7 @@ size_t custom_interfaces__msg__StitchData__rosidl_typesupport_introspection_c__s
   return member->size;
 }
 
-const void * custom_interfaces__msg__StitchData__rosidl_typesupport_introspection_c__get_const_function__StitchData__name(
+const void * custom_interfaces__msg__StitchData__rosidl_typesupport_introspection_c__get_const_function__StitchData__names(
   const void * untyped_member, size_t index)
 {
   const rosidl_runtime_c__String__Sequence * member =
@@ -56,7 +56,7 @@ const void * custom_interfaces__msg__StitchData__rosidl_typesupport_introspectio
   return &member->data[index];
 }
 
-void * custom_interfaces__msg__StitchData__rosidl_typesupport_introspection_c__get_function__StitchData__name(
+void * custom_interfaces__msg__StitchData__rosidl_typesupport_introspection_c__get_function__StitchData__names(
   void * untyped_member, size_t index)
 {
   rosidl_runtime_c__String__Sequence * member =
@@ -64,29 +64,29 @@ void * custom_interfaces__msg__StitchData__rosidl_typesupport_introspection_c__g
   return &member->data[index];
 }
 
-void custom_interfaces__msg__StitchData__rosidl_typesupport_introspection_c__fetch_function__StitchData__name(
+void custom_interfaces__msg__StitchData__rosidl_typesupport_introspection_c__fetch_function__StitchData__names(
   const void * untyped_member, size_t index, void * untyped_value)
 {
   const rosidl_runtime_c__String * item =
     ((const rosidl_runtime_c__String *)
-    custom_interfaces__msg__StitchData__rosidl_typesupport_introspection_c__get_const_function__StitchData__name(untyped_member, index));
+    custom_interfaces__msg__StitchData__rosidl_typesupport_introspection_c__get_const_function__StitchData__names(untyped_member, index));
   rosidl_runtime_c__String * value =
     (rosidl_runtime_c__String *)(untyped_value);
   *value = *item;
 }
 
-void custom_interfaces__msg__StitchData__rosidl_typesupport_introspection_c__assign_function__StitchData__name(
+void custom_interfaces__msg__StitchData__rosidl_typesupport_introspection_c__assign_function__StitchData__names(
   void * untyped_member, size_t index, const void * untyped_value)
 {
   rosidl_runtime_c__String * item =
     ((rosidl_runtime_c__String *)
-    custom_interfaces__msg__StitchData__rosidl_typesupport_introspection_c__get_function__StitchData__name(untyped_member, index));
+    custom_interfaces__msg__StitchData__rosidl_typesupport_introspection_c__get_function__StitchData__names(untyped_member, index));
   const rosidl_runtime_c__String * value =
     (const rosidl_runtime_c__String *)(untyped_value);
   *item = *value;
 }
 
-bool custom_interfaces__msg__StitchData__rosidl_typesupport_introspection_c__resize_function__StitchData__name(
+bool custom_interfaces__msg__StitchData__rosidl_typesupport_introspection_c__resize_function__StitchData__names(
   void * untyped_member, size_t size)
 {
   rosidl_runtime_c__String__Sequence * member =
@@ -279,21 +279,21 @@ static rosidl_typesupport_introspection_c__MessageMember custom_interfaces__msg_
     NULL  // resize(index) function pointer
   },
   {
-    "name",  // name
+    "names",  // name
     rosidl_typesupport_introspection_c__ROS_TYPE_STRING,  // type
     0,  // upper bound of string
     NULL,  // members of sub message
     true,  // is array
     0,  // array size
     false,  // is upper bound
-    offsetof(custom_interfaces__msg__StitchData, name),  // bytes offset in struct
+    offsetof(custom_interfaces__msg__StitchData, names),  // bytes offset in struct
     NULL,  // default value
-    custom_interfaces__msg__StitchData__rosidl_typesupport_introspection_c__size_function__StitchData__name,  // size() function pointer
-    custom_interfaces__msg__StitchData__rosidl_typesupport_introspection_c__get_const_function__StitchData__name,  // get_const(index) function pointer
-    custom_interfaces__msg__StitchData__rosidl_typesupport_introspection_c__get_function__StitchData__name,  // get(index) function pointer
-    custom_interfaces__msg__StitchData__rosidl_typesupport_introspection_c__fetch_function__StitchData__name,  // fetch(index, &value) function pointer
-    custom_interfaces__msg__StitchData__rosidl_typesupport_introspection_c__assign_function__StitchData__name,  // assign(index, value) function pointer
-    custom_interfaces__msg__StitchData__rosidl_typesupport_introspection_c__resize_function__StitchData__name  // resize(index) function pointer
+    custom_interfaces__msg__StitchData__rosidl_typesupport_introspection_c__size_function__StitchData__names,  // size() function pointer
+    custom_interfaces__msg__StitchData__rosidl_typesupport_introspection_c__get_const_function__StitchData__names,  // get_const(index) function pointer
+    custom_interfaces__msg__StitchData__rosidl_typesupport_introspection_c__get_function__StitchData__names,  // get(index) function pointer
+    custom_interfaces__msg__StitchData__rosidl_typesupport_introspection_c__fetch_function__StitchData__names,  // fetch(index, &value) function pointer
+    custom_interfaces__msg__StitchData__rosidl_typesupport_introspection_c__assign_function__StitchData__names,  // assign(index, value) function pointer
+    custom_interfaces__msg__StitchData__rosidl_typesupport_introspection_c__resize_function__StitchData__names  // resize(index) function pointer
   },
   {
     "gps_latitude",  // name

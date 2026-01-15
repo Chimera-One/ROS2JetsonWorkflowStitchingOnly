@@ -13,7 +13,7 @@
 
 // Include directives for member types
 // Member `data`
-// Member `name`
+// Member `names`
 #include "rosidl_runtime_c/string_functions.h"
 // Member `gps_latitude`
 // Member `gps_longitude`
@@ -31,8 +31,8 @@ custom_interfaces__msg__StitchData__init(custom_interfaces__msg__StitchData * ms
     custom_interfaces__msg__StitchData__fini(msg);
     return false;
   }
-  // name
-  if (!rosidl_runtime_c__String__Sequence__init(&msg->name, 0)) {
+  // names
+  if (!rosidl_runtime_c__String__Sequence__init(&msg->names, 0)) {
     custom_interfaces__msg__StitchData__fini(msg);
     return false;
   }
@@ -62,8 +62,8 @@ custom_interfaces__msg__StitchData__fini(custom_interfaces__msg__StitchData * ms
   }
   // data
   rosidl_runtime_c__String__fini(&msg->data);
-  // name
-  rosidl_runtime_c__String__Sequence__fini(&msg->name);
+  // names
+  rosidl_runtime_c__String__Sequence__fini(&msg->names);
   // gps_latitude
   rosidl_runtime_c__double__Sequence__fini(&msg->gps_latitude);
   // gps_longitude
@@ -84,9 +84,9 @@ custom_interfaces__msg__StitchData__are_equal(const custom_interfaces__msg__Stit
   {
     return false;
   }
-  // name
+  // names
   if (!rosidl_runtime_c__String__Sequence__are_equal(
-      &(lhs->name), &(rhs->name)))
+      &(lhs->names), &(rhs->names)))
   {
     return false;
   }
@@ -125,9 +125,9 @@ custom_interfaces__msg__StitchData__copy(
   {
     return false;
   }
-  // name
+  // names
   if (!rosidl_runtime_c__String__Sequence__copy(
-      &(input->name), &(output->name)))
+      &(input->names), &(output->names)))
   {
     return false;
   }

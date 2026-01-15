@@ -37,45 +37,45 @@ void StitchData_fini_function(void * message_memory)
   typed_message->~StitchData();
 }
 
-size_t size_function__StitchData__name(const void * untyped_member)
+size_t size_function__StitchData__names(const void * untyped_member)
 {
   const auto * member = reinterpret_cast<const std::vector<std::string> *>(untyped_member);
   return member->size();
 }
 
-const void * get_const_function__StitchData__name(const void * untyped_member, size_t index)
+const void * get_const_function__StitchData__names(const void * untyped_member, size_t index)
 {
   const auto & member =
     *reinterpret_cast<const std::vector<std::string> *>(untyped_member);
   return &member[index];
 }
 
-void * get_function__StitchData__name(void * untyped_member, size_t index)
+void * get_function__StitchData__names(void * untyped_member, size_t index)
 {
   auto & member =
     *reinterpret_cast<std::vector<std::string> *>(untyped_member);
   return &member[index];
 }
 
-void fetch_function__StitchData__name(
+void fetch_function__StitchData__names(
   const void * untyped_member, size_t index, void * untyped_value)
 {
   const auto & item = *reinterpret_cast<const std::string *>(
-    get_const_function__StitchData__name(untyped_member, index));
+    get_const_function__StitchData__names(untyped_member, index));
   auto & value = *reinterpret_cast<std::string *>(untyped_value);
   value = item;
 }
 
-void assign_function__StitchData__name(
+void assign_function__StitchData__names(
   void * untyped_member, size_t index, const void * untyped_value)
 {
   auto & item = *reinterpret_cast<std::string *>(
-    get_function__StitchData__name(untyped_member, index));
+    get_function__StitchData__names(untyped_member, index));
   const auto & value = *reinterpret_cast<const std::string *>(untyped_value);
   item = value;
 }
 
-void resize_function__StitchData__name(void * untyped_member, size_t size)
+void resize_function__StitchData__names(void * untyped_member, size_t size)
 {
   auto * member =
     reinterpret_cast<std::vector<std::string> *>(untyped_member);
@@ -236,21 +236,21 @@ static const ::rosidl_typesupport_introspection_cpp::MessageMember StitchData_me
     nullptr  // resize(index) function pointer
   },
   {
-    "name",  // name
+    "names",  // name
     ::rosidl_typesupport_introspection_cpp::ROS_TYPE_STRING,  // type
     0,  // upper bound of string
     nullptr,  // members of sub message
     true,  // is array
     0,  // array size
     false,  // is upper bound
-    offsetof(custom_interfaces::msg::StitchData, name),  // bytes offset in struct
+    offsetof(custom_interfaces::msg::StitchData, names),  // bytes offset in struct
     nullptr,  // default value
-    size_function__StitchData__name,  // size() function pointer
-    get_const_function__StitchData__name,  // get_const(index) function pointer
-    get_function__StitchData__name,  // get(index) function pointer
-    fetch_function__StitchData__name,  // fetch(index, &value) function pointer
-    assign_function__StitchData__name,  // assign(index, value) function pointer
-    resize_function__StitchData__name  // resize(index) function pointer
+    size_function__StitchData__names,  // size() function pointer
+    get_const_function__StitchData__names,  // get_const(index) function pointer
+    get_function__StitchData__names,  // get(index) function pointer
+    fetch_function__StitchData__names,  // fetch(index, &value) function pointer
+    assign_function__StitchData__names,  // assign(index, value) function pointer
+    resize_function__StitchData__names  // resize(index) function pointer
   },
   {
     "gps_latitude",  // name

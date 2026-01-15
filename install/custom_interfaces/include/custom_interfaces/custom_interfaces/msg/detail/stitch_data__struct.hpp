@@ -56,9 +56,9 @@ struct StitchData_
   using _data_type =
     std::basic_string<char, std::char_traits<char>, typename std::allocator_traits<ContainerAllocator>::template rebind_alloc<char>>;
   _data_type data;
-  using _name_type =
+  using _names_type =
     std::vector<std::basic_string<char, std::char_traits<char>, typename std::allocator_traits<ContainerAllocator>::template rebind_alloc<char>>, typename std::allocator_traits<ContainerAllocator>::template rebind_alloc<std::basic_string<char, std::char_traits<char>, typename std::allocator_traits<ContainerAllocator>::template rebind_alloc<char>>>>;
-  _name_type name;
+  _names_type names;
   using _gps_latitude_type =
     std::vector<double, typename std::allocator_traits<ContainerAllocator>::template rebind_alloc<double>>;
   _gps_latitude_type gps_latitude;
@@ -76,10 +76,10 @@ struct StitchData_
     this->data = _arg;
     return *this;
   }
-  Type & set__name(
+  Type & set__names(
     const std::vector<std::basic_string<char, std::char_traits<char>, typename std::allocator_traits<ContainerAllocator>::template rebind_alloc<char>>, typename std::allocator_traits<ContainerAllocator>::template rebind_alloc<std::basic_string<char, std::char_traits<char>, typename std::allocator_traits<ContainerAllocator>::template rebind_alloc<char>>>> & _arg)
   {
-    this->name = _arg;
+    this->names = _arg;
     return *this;
   }
   Type & set__gps_latitude(
@@ -146,7 +146,7 @@ struct StitchData_
     if (this->data != other.data) {
       return false;
     }
-    if (this->name != other.name) {
+    if (this->names != other.names) {
       return false;
     }
     if (this->gps_latitude != other.gps_latitude) {

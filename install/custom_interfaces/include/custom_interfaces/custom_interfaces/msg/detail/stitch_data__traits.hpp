@@ -32,14 +32,14 @@ inline void to_flow_style_yaml(
     out << ", ";
   }
 
-  // member: name
+  // member: names
   {
-    if (msg.name.size() == 0) {
-      out << "name: []";
+    if (msg.names.size() == 0) {
+      out << "names: []";
     } else {
-      out << "name: [";
-      size_t pending_items = msg.name.size();
-      for (auto item : msg.name) {
+      out << "names: [";
+      size_t pending_items = msg.names.size();
+      for (auto item : msg.names) {
         rosidl_generator_traits::value_to_yaml(item, out);
         if (--pending_items > 0) {
           out << ", ";
@@ -119,16 +119,16 @@ inline void to_block_style_yaml(
     out << "\n";
   }
 
-  // member: name
+  // member: names
   {
     if (indentation > 0) {
       out << std::string(indentation, ' ');
     }
-    if (msg.name.size() == 0) {
-      out << "name: []\n";
+    if (msg.names.size() == 0) {
+      out << "names: []\n";
     } else {
-      out << "name:\n";
-      for (auto item : msg.name) {
+      out << "names:\n";
+      for (auto item : msg.names) {
         if (indentation > 0) {
           out << std::string(indentation, ' ');
         }

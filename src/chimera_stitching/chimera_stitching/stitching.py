@@ -206,9 +206,9 @@ class StitchingNode(Node):
 
                         self.stitched_rgb.publish(panorama_msg)
 
-                        cv2.imwrite(os.path.join(self.config['output_dir'], self.config['output_filename']) + iteration + ".png", panorama)
-                        cv2.imwrite(os.path.join(self.config['output_dir'], self.config['output_filename']) + iteration + "_mask.png", panorama_mask)
-                        cv2.imwrite(os.path.join(self.config['output_dir'], self.config['output_filename']) + iteration + "_heatmap.png", panorama_heatmap)
+                        cv2.imwrite(os.path.join(self.config['output_dir'], self.config['output_filename']) + str(iteration) + ".png", panorama)
+                        cv2.imwrite(os.path.join(self.config['output_dir'], self.config['output_filename']) + str(iteration) + "_mask.png", panorama_mask)
+                        cv2.imwrite(os.path.join(self.config['output_dir'], self.config['output_filename']) + str(iteration) + "_heatmap.png", panorama_heatmap)
 
                         self.is_stitch_ready = False
                         self.is_dir_reset = False
@@ -217,9 +217,9 @@ class StitchingNode(Node):
                         print(f"Panorama size: ({panorama_width}, {panorama_height})")
                         print(f"Bounding box size: ({bb_width}, {bb_height})")
 
-                        cv2.imwrite(os.path.join(self.config['output_dir'], self.config['output_filename']) + iteration + ".png", panorama)
-                        cv2.imwrite(os.path.join(self.config['output_dir'], self.config['output_filename']) + iteration + "_mask.png", panorama_mask)
-                        cv2.imwrite(os.path.join(self.config['output_dir'], self.config['output_filename']) + iteration + "_heatmap.png", panorama_heatmap)
+                        cv2.imwrite(os.path.join(self.config['output_dir'], self.config['output_filename']) + str(iteration) + ".png", panorama)
+                        cv2.imwrite(os.path.join(self.config['output_dir'], self.config['output_filename']) + str(iteration) + "_mask.png", panorama_mask)
+                        cv2.imwrite(os.path.join(self.config['output_dir'], self.config['output_filename']) + str(iteration) + "_heatmap.png", panorama_heatmap)
 
                         iteration = iteration + 1
 
@@ -438,7 +438,7 @@ class StitchingNode(Node):
 
         self.get_logger().info(f"Bounding box: x[{min_x}, {max_x}], y[{min_y}, {max_y}]")
 
-        return min_x, max_x, min_y, max_y, all_corners
+        return min_x, max_x, min_y, max_y #, all_corners
             
 
     def process_image(self, path, config):
