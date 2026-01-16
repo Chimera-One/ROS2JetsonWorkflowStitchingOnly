@@ -113,6 +113,9 @@ class StitchingNode(Node):
                 "heatmap_path": None
             }
 
+
+        self.get_logger().info(f"Stitch request: {self.image_data}")
+
         self.is_stitch_ready = True
 
 
@@ -257,7 +260,7 @@ class StitchingNode(Node):
 
                     else:
 
-                        time.sleep(0.5)
+                        time.sleep(1.0)
                         continue
 
         except Exception as e:

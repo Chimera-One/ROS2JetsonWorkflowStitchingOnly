@@ -1,0 +1,328 @@
+ros2 run chimera_stitching communication 
+[INFO] [1768533701.420454691] [receive_data]: Stitching trigger thread started
+[INFO] [1768533738.886860463] [receive_data]: Received mask image
+[INFO] [1768533739.192568980] [receive_data]: Received heatmap
+[INFO] [1768533740.462028130] [receive_data]: Received rgb. name: DJI_20251027154514_0035_D
+[INFO] [1768533740.464968625] [receive_data]: Quaternion_flight_yaw: [ 0.1854233   0.04232797  0.00622336 -0.98172695]
+[INFO] [1768533740.466824577] [receive_data]: Quaternion_gimbal_yaw: [-0.70697647  0.01357464  0.70697647  0.01357464]
+[INFO] [1768533740.468383971] [receive_data]: Angle between current frame DJI_20251027154514_0035_D and past frame: 0.0000. roll: 0.2, pitch: 4.9, yaw: -158.60000000000002, g_roll: 180.0, g_pitch: -90.0, g_yaw: 177.8
+[INFO] [1768533743.679681964] [receive_data]: Received mask image
+[INFO] [1768533744.506133633] [receive_data]: Received heatmap
+[INFO] [1768533745.897013406] [receive_data]: Received rgb. name: DJI_20251027154516_0036_D
+[INFO] [1768533745.899577028] [receive_data]: Quaternion_flight_yaw: [ 0.1854233   0.04232797  0.00622336 -0.98172695]
+[INFO] [1768533745.901470385] [receive_data]: Quaternion_gimbal_yaw: [-0.70697647  0.01357464  0.70697647  0.01357464]
+[INFO] [1768533745.903261702] [receive_data]: Angle between current frame DJI_20251027154516_0036_D and past frame: 0.0000. roll: 0.2, pitch: 4.9, yaw: -158.60000000000002, g_roll: 180.0, g_pitch: -90.0, g_yaw: 177.8
+[INFO] [1768533750.626121800] [receive_data]: Received mask image
+[INFO] [1768533750.882894297] [receive_data]: Received heatmap
+[INFO] [1768533752.570442070] [receive_data]: Received rgb. name: DJI_20251027154518_0037_D
+[INFO] [1768533752.572356354] [receive_data]: Quaternion_flight_yaw: [ 0.18713646  0.04231704  0.00629723 -0.98140183]
+[INFO] [1768533752.573687090] [receive_data]: Quaternion_gimbal_yaw: [ 0.70759315 -0.01356279 -0.70635925 -0.01358648]
+[INFO] [1768533752.574897768] [receive_data]: Angle between current frame DJI_20251027154518_0037_D and past frame: 0.0039. roll: 0.2, pitch: 4.9, yaw: -158.4, g_roll: 0.0, g_pitch: -89.9, g_yaw: -2.2
+[INFO] [1768533755.728758418] [receive_data]: Received mask image
+[INFO] [1768533756.015316484] [receive_data]: Received heatmap
+[INFO] [1768533757.935660231] [receive_data]: Received rgb. name: DJI_20251027154520_0038_D
+[INFO] [1768533757.937874977] [receive_data]: Quaternion_flight_yaw: [ 0.18717332  0.04215372  0.00715366 -0.98139596]
+[INFO] [1768533757.939194066] [receive_data]: Quaternion_gimbal_yaw: [ 0.70759315 -0.01356279 -0.70635925 -0.01358648]
+[INFO] [1768533757.940348524] [receive_data]: Angle between current frame DJI_20251027154520_0038_D and past frame: 0.0001. roll: 0.1, pitch: 4.9, yaw: -158.4, g_roll: 0.0, g_pitch: -89.9, g_yaw: -2.2
+[INFO] [1768533762.390917959] [receive_data]: Received mask image
+[INFO] [1768533762.585983710] [receive_data]: Received heatmap
+[INFO] [1768533764.090693814] [receive_data]: Received rgb. name: DJI_20251027154522_0039_D
+[INFO] [1768533764.093309975] [receive_data]: Quaternion_flight_yaw: [ 0.1871279   0.04317343  0.00646066 -0.9813651 ]
+[INFO] [1768533764.095117897] [receive_data]: Quaternion_gimbal_yaw: [ 0.70759315 -0.01356279 -0.70635925 -0.01358648]
+[INFO] [1768533764.096875103] [receive_data]: Angle between current frame DJI_20251027154522_0039_D and past frame: 0.0018. roll: 0.2, pitch: 5.0, yaw: -158.4, g_roll: 0.0, g_pitch: -89.9, g_yaw: -2.2
+[INFO] [1768533768.038401977] [receive_data]: Received mask image
+[INFO] [1768533769.021743076] [receive_data]: Received heatmap
+[INFO] [1768533770.241330392] [receive_data]: Received rgb. name: DJI_20251027154524_0040_D
+[INFO] [1768533770.243891100] [receive_data]: Quaternion_flight_yaw: [ 0.18717332  0.04215372  0.00715366 -0.98139596]
+[INFO] [1768533770.245722669] [receive_data]: Quaternion_gimbal_yaw: [ 0.67173168  0.22085414 -0.67173168  0.22085414]
+[INFO] [1768533770.247395336] [receive_data]: Angle between current frame DJI_20251027154524_0040_D and past frame: 0.6737. roll: 0.1, pitch: 4.9, yaw: -158.4, g_roll: 180.0, g_pitch: -90.0, g_yaw: -143.6
+[INFO] [1768533770.248741142] [receive_data]: ---Pose filtered DJI_20251027154524_0040_D
+[INFO] [1768533775.169402861] [receive_data]: Received mask image
+[INFO] [1768533775.303268931] [receive_data]: Received heatmap
+[INFO] [1768533777.276994902] [receive_data]: Received rgb. name: DJI_20251027154526_0041_D
+[INFO] [1768533777.279022587] [receive_data]: Quaternion_flight_yaw: [ 0.18630904  0.04301649  0.00727953 -0.98152205]
+[INFO] [1768533777.280467491] [receive_data]: Quaternion_gimbal_yaw: [ 0.4925276   0.50736236 -0.4925276   0.50736236]
+[INFO] [1768533777.281686905] [receive_data]: Angle between current frame DJI_20251027154526_0041_D and past frame: 0.9634. roll: 0.1, pitch: 5.0, yaw: -158.5, g_roll: 180.0, g_pitch: -90.0, g_yaw: -88.3
+[INFO] [1768533777.282812181] [receive_data]: ---Pose filtered DJI_20251027154526_0041_D
+[INFO] [1768533779.791909157] [receive_data]: Received mask image
+[INFO] [1768533780.041687044] [receive_data]: Received heatmap
+[INFO] [1768533782.045155473] [receive_data]: Received rgb. name: DJI_20251027154528_0042_D
+[INFO] [1768533782.047716181] [receive_data]: Quaternion_flight_yaw: [ 0.18630904  0.04301649  0.00727953 -0.98152205]
+[INFO] [1768533782.049558757] [receive_data]: Quaternion_gimbal_yaw: [ 0.17585031  0.68489172 -0.17585031  0.68489172]
+[INFO] [1768533782.051243934] [receive_data]: Angle between current frame DJI_20251027154528_0042_D and past frame: 1.0385. roll: 0.1, pitch: 5.0, yaw: -158.5, g_roll: 180.0, g_pitch: -90.0, g_yaw: -28.8
+[INFO] [1768533782.056181522] [receive_data]: ---Pose filtered DJI_20251027154528_0042_D
+[INFO] [1768533786.181031900] [receive_data]: Received mask image
+[INFO] [1768533787.052895451] [receive_data]: Received heatmap
+[INFO] [1768533789.865027320] [receive_data]: Received rgb. name: DJI_20251027154530_0043_D
+[INFO] [1768533789.867518944] [receive_data]: Quaternion_flight_yaw: [ 0.18717332  0.04215372  0.00715366 -0.98139596]
+[INFO] [1768533789.869326386] [receive_data]: Quaternion_gimbal_yaw: [ 0.01542545  0.70693851 -0.01542545  0.70693851]
+[INFO] [1768533789.871000716] [receive_data]: Angle between current frame DJI_20251027154530_0043_D and past frame: 0.4608. roll: 0.1, pitch: 4.9, yaw: -158.4, g_roll: 180.0, g_pitch: -90.0, g_yaw: -2.5
+[INFO] [1768533791.951577609] [receive_data]: Received mask image
+[INFO] [1768533792.414038527] [receive_data]: Received heatmap
+[INFO] [1768533793.236842560] [receive_data]: Received rgb. name: DJI_20251027154532_0044_D
+[INFO] [1768533793.239355110] [receive_data]: Quaternion_flight_yaw: [ 0.18630904  0.04301649  0.00727953 -0.98152205]
+[INFO] [1768533793.241182006] [receive_data]: Quaternion_gimbal_yaw: [ 0.01296899  0.70637081 -0.01294637  0.70760474]
+[INFO] [1768533793.242832210] [receive_data]: Angle between current frame DJI_20251027154532_0044_D and past frame: 0.0052. roll: 0.1, pitch: 5.0, yaw: -158.5, g_roll: 0.0, g_pitch: -89.9, g_yaw: 177.9
+[INFO] [1768533798.113294619] [receive_data]: Received mask image
+[INFO] [1768533798.696699844] [receive_data]: Received heatmap
+[INFO] [1768533799.853532044] [receive_data]: Received rgb. name: DJI_20251027154534_0045_D
+[INFO] [1768533799.856053234] [receive_data]: Quaternion_flight_yaw: [ 0.18545243  0.04302282  0.00724199 -0.98168426]
+[INFO] [1768533799.857818374] [receive_data]: Quaternion_gimbal_yaw: [ 0.01296899  0.70637081 -0.01294637  0.70760474]
+[INFO] [1768533799.859540828] [receive_data]: Angle between current frame DJI_20251027154534_0045_D and past frame: 0.0017. roll: 0.1, pitch: 5.0, yaw: -158.60000000000002, g_roll: 0.0, g_pitch: -89.9, g_yaw: 177.9
+[INFO] [1768533804.038339070] [receive_data]: Received mask image
+[INFO] [1768533804.882522870] [receive_data]: Received heatmap
+[INFO] [1768533805.686162103] [receive_data]: Received rgb. name: DJI_20251027154536_0046_D
+[INFO] [1768533805.688179131] [receive_data]: Quaternion_flight_yaw: [ 0.18545243  0.04302282  0.00724199 -0.98168426]
+[INFO] [1768533805.689468652] [receive_data]: Quaternion_gimbal_yaw: [ 0.01295768  0.70698805 -0.01295768  0.70698805]
+[INFO] [1768533805.690665283] [receive_data]: Angle between current frame DJI_20251027154536_0046_D and past frame: 0.0017. roll: 0.1, pitch: 5.0, yaw: -158.60000000000002, g_roll: 180.0, g_pitch: -90.0, g_yaw: -2.1
+[INFO] [1768533810.314464281] [receive_data]: Received mask image
+[INFO] [1768533811.849581571] [receive_data]: Received heatmap
+[INFO] [1768533813.417791836] [receive_data]: Received rgb. name: DJI_20251027154538_0047_D
+[INFO] [1768533813.420053649] [receive_data]: Quaternion_flight_yaw: [ 0.18545243  0.04302282  0.00724199 -0.98168426]
+[INFO] [1768533813.421534038] [receive_data]: Quaternion_gimbal_yaw: [ 0.01235148  0.70638184 -0.01232994  0.70761579]
+[INFO] [1768533813.422924161] [receive_data]: Angle between current frame DJI_20251027154538_0047_D and past frame: 0.0025. roll: 0.1, pitch: 5.0, yaw: -158.60000000000002, g_roll: 0.0, g_pitch: -89.9, g_yaw: 178.0
+[INFO] [1768533816.445356359] [receive_data]: Received mask image
+[INFO] [1768533816.834895099] [receive_data]: Received heatmap
+[INFO] [1768533818.124444038] [receive_data]: Received rgb. name: DJI_20251027154540_0048_D
+[INFO] [1768533818.126940492] [receive_data]: Quaternion_flight_yaw: [ 0.18630904  0.04301649  0.00727953 -0.98152205]
+[INFO] [1768533818.128755581] [receive_data]: Quaternion_gimbal_yaw: [ 0.01235148  0.70638184 -0.01232994  0.70761579]
+[INFO] [1768533818.130426742] [receive_data]: Angle between current frame DJI_20251027154540_0048_D and past frame: 0.0017. roll: 0.1, pitch: 5.0, yaw: -158.5, g_roll: 0.0, g_pitch: -89.9, g_yaw: 178.0
+[INFO] [1768533822.113042355] [receive_data]: Received mask image
+[INFO] [1768533822.773868802] [receive_data]: Received heatmap
+[INFO] [1768533824.389510257] [receive_data]: Received rgb. name: DJI_20251027154542_0049_D
+[INFO] [1768533824.391416635] [receive_data]: Quaternion_flight_yaw: [ 0.18545243  0.04302282  0.00724199 -0.98168426]
+[INFO] [1768533824.393229836] [receive_data]: Quaternion_gimbal_yaw: [ 0.01296899  0.70637081 -0.01294637  0.70760474]
+[INFO] [1768533824.394906117] [receive_data]: Angle between current frame DJI_20251027154542_0049_D and past frame: 0.0035. roll: 0.1, pitch: 5.0, yaw: -158.60000000000002, g_roll: 0.0, g_pitch: -89.9, g_yaw: 177.9
+[INFO] [1768533828.339763628] [receive_data]: Received mask image
+[INFO] [1768533828.778068457] [receive_data]: Received heatmap
+[INFO] [1768533829.769024026] [receive_data]: Received rgb. name: DJI_20251027154544_0050_D
+[INFO] [1768533829.771486242] [receive_data]: Quaternion_flight_yaw: [ 0.18630904  0.04301649  0.00727953 -0.98152205]
+[INFO] [1768533829.773539428] [receive_data]: Quaternion_gimbal_yaw: [ 0.01296899  0.70637081 -0.01294637  0.70760474]
+[INFO] [1768533829.775346261] [receive_data]: Angle between current frame DJI_20251027154544_0050_D and past frame: 0.0017. roll: 0.1, pitch: 5.0, yaw: -158.5, g_roll: 0.0, g_pitch: -89.9, g_yaw: 177.9
+[INFO] [1768533834.680680819] [receive_data]: Received mask image
+[INFO] [1768533835.265645148] [receive_data]: Received heatmap
+[INFO] [1768533836.755157256] [receive_data]: Received rgb. name: DJI_20251027154546_0051_D
+[INFO] [1768533836.757204074] [receive_data]: Quaternion_flight_yaw: [ 0.18630904  0.04301649  0.00727953 -0.98152205]
+[INFO] [1768533836.759031353] [receive_data]: Quaternion_gimbal_yaw: [ 0.01235148  0.70638184 -0.01232994  0.70761579]
+[INFO] [1768533836.760811755] [receive_data]: Angle between current frame DJI_20251027154546_0051_D and past frame: 0.0017. roll: 0.1, pitch: 5.0, yaw: -158.5, g_roll: 0.0, g_pitch: -89.9, g_yaw: 178.0
+[INFO] [1768533840.421176793] [receive_data]: Received mask image
+[INFO] [1768533841.099596145] [receive_data]: Received heatmap
+[INFO] [1768533845.663882886] [receive_data]: Received rgb. name: DJI_20251027154548_0052_D
+[INFO] [1768533845.665714197] [receive_data]: Quaternion_flight_yaw: [ 0.18716551  0.04301012  0.00731706 -0.98135909]
+[INFO] [1768533845.667760662] [receive_data]: Quaternion_gimbal_yaw: [ 0.01296899  0.70637081 -0.01294637  0.70760474]
+[INFO] [1768533845.669036327] [receive_data]: Angle between current frame DJI_20251027154548_0052_D and past frame: 0.0000. roll: 0.1, pitch: 5.0, yaw: -158.4, g_roll: 0.0, g_pitch: -89.9, g_yaw: 177.9
+[INFO] [1768533847.475875614] [receive_data]: Received mask image
+[INFO] [1768533848.460955219] [receive_data]: Received heatmap
+[INFO] [1768533850.104292330] [receive_data]: Received rgb. name: DJI_20251027154550_0053_D
+[INFO] [1768533850.106784080] [receive_data]: Quaternion_flight_yaw: [ 0.18716551  0.04301012  0.00731706 -0.98135909]
+[INFO] [1768533850.108580161] [receive_data]: Quaternion_gimbal_yaw: [ 0.01296899  0.70637081 -0.01294637  0.70760474]
+[INFO] [1768533850.110257817] [receive_data]: Angle between current frame DJI_20251027154550_0053_D and past frame: 0.0000. roll: 0.1, pitch: 5.0, yaw: -158.4, g_roll: 0.0, g_pitch: -89.9, g_yaw: 177.9
+[INFO] [1768533852.826695118] [receive_data]: Received mask image
+[INFO] [1768533853.359045228] [receive_data]: Received heatmap
+[INFO] [1768533854.223787571] [receive_data]: Received rgb. name: DJI_20251027154552_0054_D
+[INFO] [1768533854.226287512] [receive_data]: Quaternion_flight_yaw: [ 0.18717332  0.04215372  0.00715366 -0.98139596]
+[INFO] [1768533854.228097256] [receive_data]: Quaternion_gimbal_yaw: [ 0.01295768  0.70698805 -0.01295768  0.70698805]
+[INFO] [1768533854.229715076] [receive_data]: Angle between current frame DJI_20251027154552_0054_D and past frame: 0.0000. roll: 0.1, pitch: 4.9, yaw: -158.4, g_roll: 180.0, g_pitch: -90.0, g_yaw: -2.1
+[INFO] [1768533858.650386510] [receive_data]: Received mask image
+[INFO] [1768533859.296877516] [receive_data]: Received heatmap
+[INFO] [1768533860.644572796] [receive_data]: Received rgb. name: DJI_20251027154554_0055_D
+[INFO] [1768533860.646407562] [receive_data]: Quaternion_flight_yaw: [ 0.18716551  0.04301012  0.00731706 -0.98135909]
+[INFO] [1768533860.647560035] [receive_data]: Quaternion_gimbal_yaw: [ 0.01295768  0.70698805 -0.01295768  0.70698805]
+[INFO] [1768533860.649200605] [receive_data]: Angle between current frame DJI_20251027154554_0055_D and past frame: 0.0017. roll: 0.1, pitch: 5.0, yaw: -158.4, g_roll: 180.0, g_pitch: -90.0, g_yaw: -2.1
+[INFO] [1768533865.011360943] [receive_data]: Received mask image
+[INFO] [1768533865.272639944] [receive_data]: Received heatmap
+[INFO] [1768533866.662013381] [receive_data]: Received rgb. name: DJI_20251027154556_0056_D
+[INFO] [1768533866.664141441] [receive_data]: Quaternion_flight_yaw: [ 0.18802183  0.04300372  0.00735459 -0.98119538]
+[INFO] [1768533866.665592679] [receive_data]: Quaternion_gimbal_yaw: [ 0.01295768  0.70698805 -0.01295768  0.70698805]
+[INFO] [1768533866.667267199] [receive_data]: Angle between current frame DJI_20251027154556_0056_D and past frame: 0.0017. roll: 0.1, pitch: 5.0, yaw: -158.3, g_roll: 180.0, g_pitch: -90.0, g_yaw: -2.1
+[INFO] [1768533871.022464571] [receive_data]: Received heatmap
+[INFO] [1768533871.642297781] [receive_data]: Received mask image
+[INFO] [1768533873.012032405] [receive_data]: Received rgb. name: DJI_20251027154558_0057_D
+[INFO] [1768533873.014527290] [receive_data]: Quaternion_flight_yaw: [ 0.18802967  0.04214746  0.00719045 -0.98123225]
+[INFO] [1768533873.015836104] [receive_data]: Quaternion_gimbal_yaw: [ 0.01296899  0.70637081 -0.01294637  0.70760474]
+[INFO] [1768533873.017004352] [receive_data]: Angle between current frame DJI_20251027154558_0057_D and past frame: 0.0035. roll: 0.1, pitch: 4.9, yaw: -158.3, g_roll: 0.0, g_pitch: -89.9, g_yaw: 177.9
+[INFO] [1768533876.535926462] [receive_data]: Received mask image
+[INFO] [1768533876.920980110] [receive_data]: Received heatmap
+[INFO] [1768533878.067015787] [receive_data]: Received rgb. name: DJI_20251027154600_0058_D
+[INFO] [1768533878.069579756] [receive_data]: Quaternion_flight_yaw: [ 0.18802183  0.04300372  0.00735459 -0.98119538]
+[INFO] [1768533878.071337374] [receive_data]: Quaternion_gimbal_yaw: [ 0.01295768  0.70698805 -0.01295768  0.70698805]
+[INFO] [1768533878.073027253] [receive_data]: Angle between current frame DJI_20251027154600_0058_D and past frame: 0.0035. roll: 0.1, pitch: 5.0, yaw: -158.3, g_roll: 180.0, g_pitch: -90.0, g_yaw: -2.1
+[INFO] [1768533882.550977351] [receive_data]: Received mask image
+[INFO] [1768533882.948752712] [receive_data]: Received heatmap
+[INFO] [1768533883.981057629] [receive_data]: Received rgb. name: DJI_20251027154602_0059_D
+[INFO] [1768533883.983389484] [receive_data]: Quaternion_flight_yaw: [ 0.18887802  0.04299728  0.00739212 -0.98103093]
+[INFO] [1768533883.985103714] [receive_data]: Quaternion_gimbal_yaw: [ 0.01296899  0.70637081 -0.01294637  0.70760474]
+[INFO] [1768533883.986848533] [receive_data]: Angle between current frame DJI_20251027154602_0059_D and past frame: 0.0025. roll: 0.1, pitch: 5.0, yaw: -158.20000000000002, g_roll: 0.0, g_pitch: -89.9, g_yaw: 177.9
+[INFO] [1768533888.772673942] [receive_data]: Received heatmap
+[INFO] [1768533889.741048858] [receive_data]: Received mask image
+[INFO] [1768533891.158713292] [receive_data]: Received rgb. name: DJI_20251027154604_0060_D
+[INFO] [1768533891.161264461] [receive_data]: Quaternion_flight_yaw: [ 0.18888589  0.04214117  0.00722722 -0.98106779]
+[INFO] [1768533891.163025919] [receive_data]: Quaternion_gimbal_yaw: [ 0.01295768  0.70698805 -0.01295768  0.70698805]
+[INFO] [1768533891.164728693] [receive_data]: Angle between current frame DJI_20251027154604_0060_D and past frame: 0.0000. roll: 0.1, pitch: 4.9, yaw: -158.20000000000002, g_roll: 180.0, g_pitch: -90.0, g_yaw: -2.1
+[INFO] [1768533895.325984643] [receive_data]: Received heatmap
+[INFO] [1768533895.544781856] [receive_data]: Received mask image
+[INFO] [1768533897.028139649] [receive_data]: Received rgb. name: DJI_20251027154606_0061_D
+[INFO] [1768533897.030648165] [receive_data]: Quaternion_flight_yaw: [ 0.18974196  0.04213484  0.007264   -0.98090258]
+[INFO] [1768533897.032453748] [receive_data]: Quaternion_gimbal_yaw: [ 0.01295768  0.70698805 -0.01295768  0.70698805]
+[INFO] [1768533897.034117805] [receive_data]: Angle between current frame DJI_20251027154606_0061_D and past frame: 0.0017. roll: 0.1, pitch: 4.9, yaw: -158.10000000000002, g_roll: 180.0, g_pitch: -90.0, g_yaw: -2.1
+[INFO] [1768533900.595148771] [receive_data]: Received mask image
+[INFO] [1768533901.227209606] [receive_data]: Received heatmap
+[INFO] [1768533902.123242611] [receive_data]: Received rgb. name: DJI_20251027154608_0062_D
+[INFO] [1768533902.125926092] [receive_data]: Quaternion_flight_yaw: [ 0.18973405  0.04299081  0.00742964 -0.98086573]
+[INFO] [1768533902.127903408] [receive_data]: Quaternion_gimbal_yaw: [ 0.01295768  0.70698805 -0.01295768  0.70698805]
+[INFO] [1768533902.129586471] [receive_data]: Angle between current frame DJI_20251027154608_0062_D and past frame: 0.0017. roll: 0.1, pitch: 5.0, yaw: -158.10000000000002, g_roll: 180.0, g_pitch: -90.0, g_yaw: -2.1
+[INFO] [1768533906.754445257] [receive_data]: Received mask image
+[INFO] [1768533907.427362800] [receive_data]: Received heatmap
+[INFO] [1768533910.149319709] [receive_data]: Received rgb. name: DJI_20251027154610_0063_D
+[INFO] [1768533910.152018229] [receive_data]: Quaternion_flight_yaw: [ 0.18888589  0.04214117  0.00722722 -0.98106779]
+[INFO] [1768533910.153781927] [receive_data]: Quaternion_gimbal_yaw: [ 0.01295768  0.70698805 -0.01295768  0.70698805]
+[INFO] [1768533910.155451614] [receive_data]: Angle between current frame DJI_20251027154610_0063_D and past frame: 0.0025. roll: 0.1, pitch: 4.9, yaw: -158.20000000000002, g_roll: 180.0, g_pitch: -90.0, g_yaw: -2.1
+[INFO] [1768533912.616467285] [receive_data]: Received mask image
+[INFO] [1768533913.168841283] [receive_data]: Received heatmap
+[INFO] [1768533914.754977233] [receive_data]: Received rgb. name: DJI_20251027154612_0064_D
+[INFO] [1768533914.757522194] [receive_data]: Quaternion_flight_yaw: [ 0.18973405  0.04299081  0.00742964 -0.98086573]
+[INFO] [1768533914.759301347] [receive_data]: Quaternion_gimbal_yaw: [ 0.01295768  0.70698805 -0.01295768  0.70698805]
+[INFO] [1768533914.760993721] [receive_data]: Angle between current frame DJI_20251027154612_0064_D and past frame: 0.0025. roll: 0.1, pitch: 5.0, yaw: -158.10000000000002, g_roll: 180.0, g_pitch: -90.0, g_yaw: -2.1
+[INFO] [1768533918.800096978] [receive_data]: Received mask image
+[INFO] [1768533919.444713463] [receive_data]: Received heatmap
+[INFO] [1768533920.494626897] [receive_data]: Received rgb. name: DJI_20251027154614_0065_D
+[INFO] [1768533920.497088951] [receive_data]: Quaternion_flight_yaw: [ 0.18974196  0.04213484  0.007264   -0.98090258]
+[INFO] [1768533920.498571290] [receive_data]: Quaternion_gimbal_yaw: [ 0.01295768  0.70698805 -0.01295768  0.70698805]
+[INFO] [1768533920.499757904] [receive_data]: Angle between current frame DJI_20251027154614_0065_D and past frame: 0.0017. roll: 0.1, pitch: 4.9, yaw: -158.10000000000002, g_roll: 180.0, g_pitch: -90.0, g_yaw: -2.1
+[INFO] [1768533924.834709602] [receive_data]: Received mask image
+[INFO] [1768533925.399558693] [receive_data]: Received heatmap
+[INFO] [1768533928.213147211] [receive_data]: Received rgb. name: DJI_20251027154616_0066_D
+[INFO] [1768533928.215026805] [receive_data]: Quaternion_flight_yaw: [ 0.18973405  0.04299081  0.00742964 -0.98086573]
+[INFO] [1768533928.216964220] [receive_data]: Quaternion_gimbal_yaw: [ 0.01295768  0.70698805 -0.01295768  0.70698805]
+[INFO] [1768533928.218679792] [receive_data]: Angle between current frame DJI_20251027154616_0066_D and past frame: 0.0017. roll: 0.1, pitch: 5.0, yaw: -158.10000000000002, g_roll: 180.0, g_pitch: -90.0, g_yaw: -2.1
+[INFO] [1768533930.724322667] [receive_data]: Received mask image
+[INFO] [1768533931.416440556] [receive_data]: Received heatmap
+[INFO] [1768533933.722839240] [receive_data]: Received rgb. name: DJI_20251027154618_0067_D
+[INFO] [1768533933.725219667] [receive_data]: Quaternion_flight_yaw: [ 0.18973405  0.04299081  0.00742964 -0.98086573]
+[INFO] [1768533933.727104093] [receive_data]: Quaternion_gimbal_yaw: [ 0.01295768  0.70698805 -0.01295768  0.70698805]
+[INFO] [1768533933.728464999] [receive_data]: Angle between current frame DJI_20251027154618_0067_D and past frame: 0.0000. roll: 0.1, pitch: 5.0, yaw: -158.10000000000002, g_roll: 180.0, g_pitch: -90.0, g_yaw: -2.1
+[INFO] [1768533936.891674083] [receive_data]: Received mask image
+[INFO] [1768533937.410447188] [receive_data]: Received heatmap
+[INFO] [1768533938.568427793] [receive_data]: Received rgb. name: DJI_20251027154620_0068_D
+[INFO] [1768533938.570892214] [receive_data]: Quaternion_flight_yaw: [ 0.19058995  0.04298431  0.00746715 -0.98069978]
+[INFO] [1768533938.572705669] [receive_data]: Quaternion_gimbal_yaw: [ 0.01295768  0.70698805 -0.01295768  0.70698805]
+[INFO] [1768533938.574339006] [receive_data]: Angle between current frame DJI_20251027154620_0068_D and past frame: 0.0017. roll: 0.1, pitch: 5.0, yaw: -158.0, g_roll: 180.0, g_pitch: -90.0, g_yaw: -2.1
+[INFO] [1768533942.909875239] [receive_data]: Received mask image
+[INFO] [1768533943.747739911] [receive_data]: Received heatmap
+[INFO] [1768533945.928296720] [receive_data]: Received rgb. name: DJI_20251027154622_0069_D
+[INFO] [1768533945.930497446] [receive_data]: Quaternion_flight_yaw: [ 0.19058995  0.04298431  0.00746715 -0.98069978]
+[INFO] [1768533945.932406062] [receive_data]: Quaternion_gimbal_yaw: [ 0.01295768  0.70698805 -0.01295768  0.70698805]
+[INFO] [1768533945.934070374] [receive_data]: Angle between current frame DJI_20251027154622_0069_D and past frame: 0.0000. roll: 0.1, pitch: 5.0, yaw: -158.0, g_roll: 180.0, g_pitch: -90.0, g_yaw: -2.1
+[INFO] [1768533948.969825507] [receive_data]: Received mask image
+[INFO] [1768533949.394349952] [receive_data]: Received heatmap
+[INFO] [1768533950.206513602] [receive_data]: Received rgb. name: DJI_20251027154624_0070_D
+[INFO] [1768533950.209061314] [receive_data]: Quaternion_flight_yaw: [ 0.18974196  0.04213484  0.007264   -0.98090258]
+[INFO] [1768533950.210467530] [receive_data]: Quaternion_gimbal_yaw: [ 0.01295768  0.70698805 -0.01295768  0.70698805]
+[INFO] [1768533950.211662047] [receive_data]: Angle between current frame DJI_20251027154624_0070_D and past frame: 0.0025. roll: 0.1, pitch: 4.9, yaw: -158.10000000000002, g_roll: 180.0, g_pitch: -90.0, g_yaw: -2.1
+[INFO] [1768533955.008580683] [receive_data]: Received mask image
+[INFO] [1768533955.433448925] [receive_data]: Received heatmap
+[INFO] [1768533956.337419406] [receive_data]: Received rgb. name: DJI_20251027154626_0071_D
+[INFO] [1768533956.339873396] [receive_data]: Quaternion_flight_yaw: [ 0.19058995  0.04298431  0.00746715 -0.98069978]
+[INFO] [1768533956.341422675] [receive_data]: Quaternion_gimbal_yaw: [ 0.01295768  0.70698805 -0.01295768  0.70698805]
+[INFO] [1768533956.342841626] [receive_data]: Angle between current frame DJI_20251027154626_0071_D and past frame: 0.0025. roll: 0.1, pitch: 5.0, yaw: -158.0, g_roll: 180.0, g_pitch: -90.0, g_yaw: -2.1
+[INFO] [1768533961.023187714] [receive_data]: Received mask image
+[INFO] [1768533961.584187503] [receive_data]: Received heatmap
+[INFO] [1768533962.521109564] [receive_data]: Received rgb. name: DJI_20251027154628_0072_D
+[INFO] [1768533962.523597151] [receive_data]: Quaternion_flight_yaw: [ 0.19059789  0.04212849  0.00730076 -0.98073663]
+[INFO] [1768533962.525382863] [receive_data]: Quaternion_gimbal_yaw: [ 0.01296899  0.70637081 -0.01294637  0.70760474]
+[INFO] [1768533962.526998409] [receive_data]: Angle between current frame DJI_20251027154628_0072_D and past frame: 0.0035. roll: 0.1, pitch: 4.9, yaw: -158.0, g_roll: 0.0, g_pitch: -89.9, g_yaw: 177.9
+[INFO] [1768533969.032719267] [receive_data]: Received mask image
+[INFO] [1768533969.372219238] [receive_data]: Received heatmap
+[INFO] [1768533975.954158546] [receive_data]: Received mask image
+[INFO] [1768533976.090888843] [receive_data]: Received heatmap
+[INFO] [1768534001.287573035] [receive_data]: Received heatmap
+[INFO] [1768534001.484935606] [receive_data]: Received heatmap
+[INFO] [1768534002.578985106] [receive_data]: Received mask image
+[INFO] [1768534002.746156239] [receive_data]: Received mask image
+[INFO] [1768534006.648733695] [receive_data]: Received mask image
+[INFO] [1768534007.831258557] [receive_data]: Received heatmap
+[INFO] [1768534009.174824331] [receive_data]: Received mask image
+[INFO] [1768534013.127817670] [receive_data]: Received mask image
+[INFO] [1768534019.029735351] [receive_data]: Received heatmap
+[INFO] [1768534019.242174961] [receive_data]: Received heatmap
+[INFO] [1768534019.452079308] [receive_data]: Received mask image
+[INFO] [1768534019.579059495] [receive_data]: Received heatmap
+[INFO] [1768534032.740422655] [receive_data]: Received rgb. name: DJI_20251027154630_0073_D
+[INFO] [1768534032.742983324] [receive_data]: Quaternion_flight_yaw: [ 0.19145367  0.0421221   0.00733752 -0.98056993]
+[INFO] [1768534032.744913826] [receive_data]: Quaternion_gimbal_yaw: [ 0.01295768  0.70698805 -0.01295768  0.70698805]
+[INFO] [1768534032.746607319] [receive_data]: Angle between current frame DJI_20251027154630_0073_D and past frame: 0.0025. roll: 0.1, pitch: 4.9, yaw: -157.9, g_roll: 180.0, g_pitch: -90.0, g_yaw: -2.1
+[INFO] [1768534034.565830454] [receive_data]: Received mask image
+[INFO] [1768534035.017729780] [receive_data]: Received heatmap
+[INFO] [1768534035.399156962] [receive_data]: Received mask image
+[INFO] [1768534036.112148759] [receive_data]: Received heatmap
+[INFO] [1768534045.083642282] [receive_data]: Received mask image
+[INFO] [1768534061.891059036] [receive_data]: Received heatmap
+[INFO] [1768534062.100134745] [receive_data]: Received heatmap
+[INFO] [1768534063.874459513] [receive_data]: Received mask image
+[INFO] [1768534071.174444898] [receive_data]: Received rgb. name: DJI_20251027154632_0074_D
+[INFO] [1768534071.177056796] [receive_data]: Quaternion_flight_yaw: [ 0.19058995  0.04298431  0.00746715 -0.98069978]
+[INFO] [1768534071.178901159] [receive_data]: Quaternion_gimbal_yaw: [ 0.01295768  0.70698805 -0.01295768  0.70698805]
+[INFO] [1768534071.180660983] [receive_data]: Angle between current frame DJI_20251027154632_0074_D and past frame: 0.0025. roll: 0.1, pitch: 5.0, yaw: -158.0, g_roll: 180.0, g_pitch: -90.0, g_yaw: -2.1
+[INFO] [1768534071.868197141] [receive_data]: Received rgb. name: DJI_20251027154634_0075_D
+[INFO] [1768534071.870746067] [receive_data]: Quaternion_flight_yaw: [ 0.19058995  0.04298431  0.00746715 -0.98069978]
+[INFO] [1768534071.872666553] [receive_data]: Quaternion_gimbal_yaw: [ 0.01296899  0.70637081 -0.01294637  0.70760474]
+[INFO] [1768534071.874316624] [receive_data]: Angle between current frame DJI_20251027154634_0075_D and past frame: 0.0017. roll: 0.1, pitch: 5.0, yaw: -158.0, g_roll: 0.0, g_pitch: -89.9, g_yaw: 177.9
+[INFO] [1768534072.553403012] [receive_data]: Received rgb. name: DJI_20251027154636_0076_D
+[INFO] [1768534072.555232912] [receive_data]: Quaternion_flight_yaw: [ 0.19058995  0.04298431  0.00746715 -0.98069978]
+[INFO] [1768534072.556423876] [receive_data]: Quaternion_gimbal_yaw: [ 0.01295768  0.70698805 -0.01295768  0.70698805]
+[INFO] [1768534072.557519871] [receive_data]: Angle between current frame DJI_20251027154636_0076_D and past frame: 0.0017. roll: 0.1, pitch: 5.0, yaw: -158.0, g_roll: 180.0, g_pitch: -90.0, g_yaw: -2.1
+[INFO] [1768534073.239703148] [receive_data]: Received rgb. name: DJI_20251027154638_0077_D
+[INFO] [1768534073.242169072] [receive_data]: Quaternion_flight_yaw: [ 0.18973405  0.04299081  0.00742964 -0.98086573]
+[INFO] [1768534073.243936959] [receive_data]: Quaternion_gimbal_yaw: [ 0.01296899  0.70637081 -0.01294637  0.70760474]
+[INFO] [1768534073.245589078] [receive_data]: Angle between current frame DJI_20251027154638_0077_D and past frame: 0.0025. roll: 0.1, pitch: 5.0, yaw: -158.10000000000002, g_roll: 0.0, g_pitch: -89.9, g_yaw: 177.9
+[INFO] [1768534073.935556403] [receive_data]: Received rgb. name: DJI_20251027154640_0078_D
+[INFO] [1768534073.937980057] [receive_data]: Quaternion_flight_yaw: [ 0.18887802  0.04299728  0.00739212 -0.98103093]
+[INFO] [1768534073.939324035] [receive_data]: Quaternion_gimbal_yaw: [ 0.01296899  0.70637081 -0.01294637  0.70760474]
+[INFO] [1768534073.940501688] [receive_data]: Angle between current frame DJI_20251027154640_0078_D and past frame: 0.0017. roll: 0.1, pitch: 5.0, yaw: -158.20000000000002, g_roll: 0.0, g_pitch: -89.9, g_yaw: 177.9
+[INFO] [1768534074.620380019] [receive_data]: Received rgb. name: DJI_20251027154642_0079_D
+[INFO] [1768534074.622219486] [receive_data]: Quaternion_flight_yaw: [ 0.18973405  0.04299081  0.00742964 -0.98086573]
+[INFO] [1768534074.623535819] [receive_data]: Quaternion_gimbal_yaw: [ 0.01296899  0.70637081 -0.01294637  0.70760474]
+[INFO] [1768534074.624677538] [receive_data]: Angle between current frame DJI_20251027154642_0079_D and past frame: 0.0017. roll: 0.1, pitch: 5.0, yaw: -158.10000000000002, g_roll: 0.0, g_pitch: -89.9, g_yaw: 177.9
+[INFO] [1768534075.330524328] [receive_data]: Received rgb. name: DJI_20251027154644_0080_D
+[INFO] [1768534075.332359923] [receive_data]: Quaternion_flight_yaw: [ 0.18887802  0.04299728  0.00739212 -0.98103093]
+[INFO] [1768534075.333557191] [receive_data]: Quaternion_gimbal_yaw: [ 0.20100436  0.67739602 -0.20065384  0.67857933]
+[INFO] [1768534075.334633634] [receive_data]: Angle between current frame DJI_20251027154644_0080_D and past frame: 0.5410. roll: 0.1, pitch: 5.0, yaw: -158.20000000000002, g_roll: 0.0, g_pitch: -89.9, g_yaw: 147.0
+[INFO] [1768534075.335666721] [receive_data]: ---Pose filtered DJI_20251027154644_0080_D
+[INFO] [1768534076.015283561] [receive_data]: Received rgb. name: DJI_20251027154646_0081_D
+[INFO] [1768534076.017128372] [receive_data]: Quaternion_flight_yaw: [ 0.18802967  0.04214746  0.00719045 -0.98123225]
+[INFO] [1768534076.018321928] [receive_data]: Quaternion_gimbal_yaw: [ 0.70022527  0.09841024 -0.70022527  0.09841024]
+[INFO] [1768534076.019428481] [receive_data]: Angle between current frame DJI_20251027154646_0081_D and past frame: 2.2881. roll: 0.1, pitch: 4.9, yaw: -158.3, g_roll: 180.0, g_pitch: -90.0, g_yaw: -164.0
+[INFO] [1768534076.020489310] [receive_data]: ---Pose filtered DJI_20251027154646_0081_D
+[INFO] [1768534076.685088158] [receive_data]: Received mask image
+[INFO] [1768534076.799213347] [receive_data]: Received mask image
+[INFO] [1768534076.928956838] [receive_data]: Received heatmap
+[INFO] [1768534077.119422579] [receive_data]: Received mask image
+[INFO] [1768534077.240758125] [receive_data]: Received heatmap
+[INFO] [1768534077.550716041] [receive_data]: Received heatmap
+[INFO] [1768534098.604177850] [receive_data]: Received rgb. name: DJI_20251027154648_0082_D
+[INFO] [1768534098.605991494] [receive_data]: Quaternion_flight_yaw: [ 0.18716551  0.04301012  0.00731706 -0.98135909]
+[INFO] [1768534098.607296723] [receive_data]: Quaternion_gimbal_yaw: [-0.70701955  0.01110675  0.70701955  0.01110675]
+[INFO] [1768534098.608793364] [receive_data]: Angle between current frame DJI_20251027154648_0082_D and past frame: 0.3124. roll: 0.1, pitch: 5.0, yaw: -158.4, g_roll: 180.0, g_pitch: -90.0, g_yaw: 178.2
+[INFO] [1768534099.292823768] [receive_data]: Received rgb. name: DJI_20251027154650_0083_D
+[INFO] [1768534099.294636004] [receive_data]: Quaternion_flight_yaw: [ 0.18717332  0.04215372  0.00715366 -0.98139596]
+[INFO] [1768534099.295865334] [receive_data]: Quaternion_gimbal_yaw: [-0.70698805  0.01295768  0.70698805  0.01295768]
+[INFO] [1768534099.296938898] [receive_data]: Angle between current frame DJI_20251027154650_0083_D and past frame: 0.0055. roll: 0.1, pitch: 4.9, yaw: -158.4, g_roll: 180.0, g_pitch: -90.0, g_yaw: 177.9
+[INFO] [1768534099.974635944] [receive_data]: Received rgb. name: DJI_20251027154652_0084_D
+[INFO] [1768534099.977164518] [receive_data]: Quaternion_flight_yaw: [ 0.18631682  0.04215994  0.00711687 -0.98155893]
+[INFO] [1768534099.978907319] [receive_data]: Quaternion_gimbal_yaw: [-0.70698805  0.01295768  0.70698805  0.01295768]
+[INFO] [1768534099.980579949] [receive_data]: Angle between current frame DJI_20251027154652_0084_D and past frame: 0.0017. roll: 0.1, pitch: 4.9, yaw: -158.5, g_roll: 180.0, g_pitch: -90.0, g_yaw: 177.9
+[INFO] [1768534100.670258948] [receive_data]: Received rgb. name: DJI_20251027154654_0085_D
+[INFO] [1768534100.672683530] [receive_data]: Quaternion_flight_yaw: [ 0.18546017  0.04216614  0.00708008 -0.98172115]
+[INFO] [1768534100.674264581] [receive_data]: Quaternion_gimbal_yaw: [-0.70698805  0.01295768  0.70698805  0.01295768]
+[INFO] [1768534100.675795524] [receive_data]: Angle between current frame DJI_20251027154654_0085_D and past frame: 0.0017. roll: 0.1, pitch: 4.9, yaw: -158.60000000000002, g_roll: 180.0, g_pitch: -90.0, g_yaw: 177.9
+[INFO] [1768534101.353281634] [receive_data]: Received rgb. name: DJI_20251027154656_0086_D
+[INFO] [1768534101.355077712] [receive_data]: Quaternion_flight_yaw: [ 0.18546017  0.04216614  0.00708008 -0.98172115]
+[INFO] [1768534101.356261988] [receive_data]: Quaternion_gimbal_yaw: [-0.70699909  0.01234071  0.70699909  0.01234071]
+[INFO] [1768534101.357347199] [receive_data]: Angle between current frame DJI_20251027154656_0086_D and past frame: 0.0017. roll: 0.1, pitch: 4.9, yaw: -158.60000000000002, g_roll: 180.0, g_pitch: -90.0, g_yaw: 178.0
+[INFO] [1768534102.034321277] [receive_data]: Received rgb. name: DJI_20251027154658_0087_D
+[INFO] [1768534102.036381850] [receive_data]: Quaternion_flight_yaw: [ 0.18546017  0.04216614  0.00708008 -0.98172115]
+[INFO] [1768534102.038215877] [receive_data]: Quaternion_gimbal_yaw: [-0.70699909  0.01234071  0.70699909  0.01234071]
+[INFO] [1768534102.039905465] [receive_data]: Angle between current frame DJI_20251027154658_0087_D and past frame: 0.0000. roll: 0.1, pitch: 4.9, yaw: -158.60000000000002, g_roll: 180.0, g_pitch: -90.0, g_yaw: 178.0
+[WARN] [1768534162.893290103] [receive_data]: No images received for 60.2s — checking mission completion
+[WARN] [1768534162.895044703] [receive_data]: Stitch service not ready
+

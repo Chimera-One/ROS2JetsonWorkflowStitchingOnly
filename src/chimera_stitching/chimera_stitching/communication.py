@@ -95,6 +95,7 @@ MISSION_FINISHED = "MISSION FINISHED\n"
 
 
 RGB_MAX_SIZE = 20
+STITCH_TIMEOUT_SEC = 60.0
 
 
 
@@ -249,7 +250,6 @@ class ReceiveData(Node):
         self.health_buffer = []
 
         self.last_image_time = time.monotonic()
-        self.stitch_timeout_sec = 30.0
 
         # List of GPSs for StitchData
         self.gps_long_list = []
@@ -346,6 +346,10 @@ class ReceiveData(Node):
                 self.mission_msg.gps_altitude = self.gps_alt_list
                 self.mission_publisher_.publish(self.mission_msg)
                 self.get_logger().info(f"Stitch request result: True")
+                self.get_logger().info(f"Stitch request names: {self.mission_msg.names}")
+                self.get_logger().info(f"Stitch request gps lat: {self.mission_msg.gps_latitude}")
+                self.get_logger().info(f"Stitch request gps long: {self.mission_msg.gps_longitude}")
+                self.get_logger().info(f"Stitch request gps alt: {self.mission_msg.gps_altitude}")
             else:
                 self.get_logger().info(f"Stitch request result: False")
         except Exception as e:
@@ -605,7 +609,7 @@ class ReceiveData(Node):
                 # if self.stitch_req:
                 elapsed = time.monotonic() - self.last_image_time
 
-                if elapsed >= self.stitch_timeout_sec:
+                if elapsed >= STITCH_TIMEOUT_SEC:
                     self.get_logger().warn(
                         f"No images received for {elapsed:.1f}s — checking mission completion"
                     )
