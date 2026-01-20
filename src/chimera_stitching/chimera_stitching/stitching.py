@@ -11,7 +11,7 @@ from rclpy.executors import MultiThreadedExecutor, SingleThreadedExecutor
 #Msgs 
 from std_msgs.msg import String
 from sensor_msgs.msg import Image
-from custom_interfaces.msg import StitchData
+from custom_interfaces.msg import StitchData, StitchedData
 
 import os, glob
 import re
@@ -39,6 +39,9 @@ import subprocess
 
 #Math
 import math
+
+#Transforms
+from transforms3d import _gohlketransforms
 
 
 INCLUDE_DIR = "/home/chimera/ros2_ws/src/chimera_stitching/include"
@@ -68,13 +71,20 @@ class StitchingNode(Node):
 
         self.iteration = 1
 
+        # A vector of the orientation of the mission
+        self.orientation_vector = np.array([[0, 0], [0, 0]], dtype=np.float32)
+        self.stitched_orientation_vector = np.array([[0, 0], [0, 0]], dtype=np.float32)
+        self.orientation_angle_between_original_images_and_stitched_images = 0.0
+
+        self.gps_lat = []
+        self.gps_lon = []
 
         self.bridge = CvBridge()
 
         qos_settings = QoSProfile(history=QoSHistoryPolicy.KEEP_LAST, depth=15, reliability=QoSReliabilityPolicy.RELIABLE, durability=QoSDurabilityPolicy.TRANSIENT_LOCAL)
         self.stitch_signaller = self.create_subscription(StitchData, 'mission_completion', self.stitch_signal, qos_profile=qos_settings)
         self.pose_filter_subscription = self.create_subscription(String, 'pose_filter', self.pose_filter, qos_profile=qos_settings)
-        self.stitched_rgb = self.create_publisher(Image, 'stitched_rgb', qos_profile=qos_settings)
+        self.stitched_rgb = self.create_publisher(StitchedData, 'stitched_rgb', qos_profile=qos_settings)
 
         startup_thread = threading.Thread(target=self.waiting_for_startup)
         startup_thread.start()
@@ -151,12 +161,23 @@ class StitchingNode(Node):
                     self.image_paths = [data["image_path"] for _, data in ordered_items]
                     self.mask_paths = [data["mask_path"] for _, data in ordered_items]
                     self.heatmap_paths = [data["heatmap_path"] for _, data in ordered_items]
+                    self.gps_lat = [data["lat"] for _, data in ordered_items]
+                    self.gps_lon = [data["lon"] for _, data in ordered_items]
 
+                    orientation_vector = np.array([[self.gps_lat[0], self.gps_lon[0], 0], [self.gps_lat[-1], self.gps_lon[-1], 0]], dtype=np.float32)
+
+                    print(f"Orientation vector: {orientation_vector}")
                     print("processing bounding box...")
 
-                    bb_x_min, bb_x_max, bb_y_min, bb_y_max = self.process_bounding_box()
+                    bb_x_min, bb_x_max, bb_y_min, bb_y_max, stitch_orientation = self.process_bounding_box()
 
-                    print(f"Bounding box processed. bb_x_min: {bb_x_min}, bb_x_max: {bb_x_max}, bb_y_min: {bb_y_min}, bb_y_max: {bb_y_max}")
+                    print(f"Bounding box processed. {bb_x_max - bb_x_min}, {bb_y_max - bb_y_min} bb_x_min: {bb_x_min}, bb_x_max: {bb_x_max}, bb_y_min: {bb_y_min}, bb_y_max: {bb_y_max}")
+
+                    stitch_vec = stitch_orientation[1] - stitch_orientation[0]
+                    gps_vec = orientation_vector[1] - orientation_vector[0]
+
+                    self.orientation_angle_between_original_images_and_stitched_images = _gohlketransforms.angle_between_vectors(stitch_vec, gps_vec)
+                    print(f"Rotation angle: {self.orientation_angle_between_original_images_and_stitched_images}")
                     print("processing images...")
 
                     processed_count = 0
@@ -201,11 +222,15 @@ class StitchingNode(Node):
                     bb_width = int(np.ceil(bb_x_max - bb_x_min))
                     bb_height = int(np.ceil(bb_y_max - bb_y_min))
 
-                    if panorama_width <= bb_width and panorama_height <= bb_height:
+                    if (panorama_width <= bb_width and panorama_height <= bb_height) or (panorama_height <= bb_width and panorama_width <= bb_height):
                         print(f"--- Panorama fits inside the bounding box. Iteration: {self.iteration}")
-                        panorama_msg = self.bridge.cv2_to_imgmsg(panorama, encoding="bgr8")
-                        panorama_msg.header.stamp = self.get_clock().now().to_msg()
-                        panorama_msg.header.frame_id = "camera_frame"
+                        print(f"Panorama size: ({panorama_width}, {panorama_height})")
+                        print(f"Bounding box size: ({bb_width}, {bb_height})")
+                        panorama_msg = StitchedData()
+                        panorama_msg.image = self.bridge.cv2_to_imgmsg(panorama, encoding="bgr8")
+                        panorama_msg.image.header.stamp = self.get_clock().now().to_msg()
+                        panorama_msg.image.header.frame_id = "camera_frame"
+                        panorama_msg.rotation_degree = float(self.orientation_angle_between_original_images_and_stitched_images)
 
                         self.stitched_rgb.publish(panorama_msg)
 
@@ -273,7 +298,7 @@ class StitchingNode(Node):
 
             self.get_logger().info("Stitching completed")
 
-            is_stitch_ready = False
+            self.is_stitch_ready = False
 
 
 
@@ -358,6 +383,7 @@ class StitchingNode(Node):
         previous_gps = None
         previous_image_size = None
         previous_image_origin = None
+        stitch_orientation = np.array([[0, 0, 0], [0, 0, 0]], dtype=np.float32)
 
         all_corners = []
 
@@ -405,6 +431,8 @@ class StitchingNode(Node):
 
             # Vector math
             expected_vector = np.array([x_px, y_px]) # in pixel coordinate
+            stitch_orientation[1][0] = stitch_orientation[1][0] + expected_vector[0]
+            stitch_orientation[1][1] = stitch_orientation[1][1] + expected_vector[1]
             expected_scale = current_gps[2] / previous_gps[2]
 
             # Compute origin and scale
@@ -441,7 +469,7 @@ class StitchingNode(Node):
 
         self.get_logger().info(f"Bounding box: x[{min_x}, {max_x}], y[{min_y}, {max_y}]")
 
-        return min_x, max_x, min_y, max_y #, all_corners
+        return min_x, max_x, min_y, max_y, stitch_orientation #, all_corners
             
 
     def process_image(self, path, config):
@@ -546,7 +574,7 @@ class StitchingNode(Node):
             m_kpts1_np = m_kpts1_orig.cpu().numpy()
 
             if len(m_kpts0_np) >= 3:
-                ransacThreshold = 3.0 / self.iteration
+                ransacThreshold = 3.0 # / self.iteration
                 H_affine, inliers = cv2.estimateAffinePartial2D(m_kpts1_np, m_kpts0_np, method=cv2.RANSAC, ransacReprojThreshold=ransacThreshold) #can also be 'LMEDS'
                 if H_affine is not None:
                     H = np.vstack([H_affine, [0, 0, 1]])
@@ -619,7 +647,7 @@ class StitchingNode(Node):
 
             # Mask for masking panorama
             mask_panorama[mask_overlap] = warped_mask_i[mask_overlap]
-            print(f"Stitching image {i + 1} of {len(original_images)}")
+            print(f"Stitched image {i + 1} of {len(original_images)}")
 
         print("Stitching completed.")
         return panorama, panorama_mask, panorama_heatmap

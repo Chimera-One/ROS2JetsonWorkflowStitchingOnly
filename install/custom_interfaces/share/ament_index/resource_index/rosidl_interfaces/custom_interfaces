@@ -2,3 +2,5 @@ msg/RGB.idl
 msg/RGB.msg
 msg/StitchData.idl
 msg/StitchData.msg
+msg/StitchedData.idl
+msg/StitchedData.msg
