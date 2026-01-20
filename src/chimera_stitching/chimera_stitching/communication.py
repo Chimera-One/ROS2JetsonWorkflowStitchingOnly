@@ -14,9 +14,9 @@ from rclpy.executors import MultiThreadedExecutor
 from std_msgs.msg import Float32, String
 from sensor_msgs.msg import Image
 from PIL import Image as PILImage
-from std_srvs.srv import Trigger
-from custom_interfaces.msg import RGB
-from custom_interfaces.msg import StitchData
+from std_srvs.srv import Trigger, SetBool
+from custom_interfaces.msg import RGB,StitchData
+from custom_interfaces.srv import StitchReqCheck
 
 import struct
 
@@ -41,7 +41,7 @@ from cv_bridge import CvBridge
 import numpy as np
 
 #Transforms
-from transforms3d import _gohlketransforms, euler, quaternions
+from transforms3d import _gohlketransforms, quaternions
 
 #Math
 import math
@@ -95,7 +95,7 @@ MISSION_FINISHED = "MISSION FINISHED\n"
 
 
 RGB_MAX_SIZE = 20
-STITCH_TIMEOUT_SEC = 60.0
+STITCH_TIMEOUT_SEC = 30.0
 
 
 
@@ -177,7 +177,7 @@ class ReceiveData(Node):
 
         #stitched images
         self.mission_publisher_ = self.create_publisher(StitchData, "mission_completion", qos_profile=qos_settings)
-        self.mission_publisher_check_ = self.create_client(Trigger, "mission_completion_check") # , qos_profile=qos_settings)
+        self.mission_publisher_check_ = self.create_client(StitchReqCheck, "mission_completion_check") # , qos_profile=qos_settings)
         # self.rgb_subscriber_ = self.create_subscription(Image, "stitched_rgb", self.store_stitched_rgb, qos_profile=qos_settings)
         self.rgb_subscriber_ = self.create_subscription(RGB, "rgb_images", self.store_rgbs, qos_profile=qos_settings)
         self.mask_subscriber_ = self.create_subscription(Image, "mask_images", self.store_masks, qos_profile=qos_settings)
@@ -621,7 +621,8 @@ class ReceiveData(Node):
                             continue
 
                         self.stitch_request_in_flight = True
-                        request = Trigger.Request()
+                        request = StitchReqCheck.Request()
+                        request.numberofimages = len(self.image_names_list)
                         future = self.mission_publisher_check_.call_async(request)
                         future.add_done_callback(self.on_stitch_response)
 

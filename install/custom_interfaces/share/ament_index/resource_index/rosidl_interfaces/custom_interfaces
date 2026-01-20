@@ -4,3 +4,7 @@ msg/StitchData.idl
 msg/StitchData.msg
 msg/StitchedData.idl
 msg/StitchedData.msg
+srv/StitchReqCheck.idl
+srv/StitchReqCheck.srv
+srv/StitchReqCheck_Request.msg
+srv/StitchReqCheck_Response.msg

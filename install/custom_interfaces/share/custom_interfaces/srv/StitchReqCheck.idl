@@ -1,0 +1,17 @@
+// generated from rosidl_adapter/resource/srv.idl.em
+// with input from custom_interfaces/srv/StitchReqCheck.srv
+// generated code does not contain a copyright notice
+
+
+module custom_interfaces {
+  module srv {
+    struct StitchReqCheck_Request {
+      int64 numberofimages;
+    };
+    struct StitchReqCheck_Response {
+      boolean success;
+
+      string message;
+    };
+  };
+};

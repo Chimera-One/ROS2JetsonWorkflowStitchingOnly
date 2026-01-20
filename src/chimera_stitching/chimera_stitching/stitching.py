@@ -285,7 +285,7 @@ class StitchingNode(Node):
 
                     else:
 
-                        time.sleep(1.0)
+                        time.sleep(2.0)
                         continue
 
         except Exception as e:
