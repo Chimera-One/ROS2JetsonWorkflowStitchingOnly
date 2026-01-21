@@ -81,10 +81,12 @@ class StitchingNode(Node):
 
         self.bridge = CvBridge()
 
-        qos_settings = QoSProfile(history=QoSHistoryPolicy.KEEP_LAST, depth=15, reliability=QoSReliabilityPolicy.RELIABLE, durability=QoSDurabilityPolicy.TRANSIENT_LOCAL)
+        qos_settings = QoSProfile(history=QoSHistoryPolicy.KEEP_LAST, depth=30, reliability=QoSReliabilityPolicy.RELIABLE, durability=QoSDurabilityPolicy.TRANSIENT_LOCAL)
         self.stitch_signaller = self.create_subscription(StitchData, 'mission_completion', self.stitch_signal, qos_profile=qos_settings)
         self.pose_filter_subscription = self.create_subscription(String, 'pose_filter', self.pose_filter, qos_profile=qos_settings)
         self.stitched_rgb = self.create_publisher(StitchedData, 'stitched_rgb', qos_profile=qos_settings)
+        self.stitched_mask = self.create_publisher(StitchedData, 'stitched_mask', qos_profile=qos_settings)
+        self.stitched_heatmap = self.create_publisher(StitchedData, 'stitched_heatmap', qos_profile=qos_settings)
 
         startup_thread = threading.Thread(target=self.waiting_for_startup)
         startup_thread.start()
@@ -227,12 +229,26 @@ class StitchingNode(Node):
                         print(f"Panorama size: ({panorama_width}, {panorama_height})")
                         print(f"Bounding box size: ({bb_width}, {bb_height})")
                         panorama_msg = StitchedData()
-                        panorama_msg.image = self.bridge.cv2_to_imgmsg(panorama, encoding="bgr8")
+                        panorama_msg.image = self.bridge.cv2_to_imgmsg(panorama, encoding="bgra8")
                         panorama_msg.image.header.stamp = self.get_clock().now().to_msg()
-                        panorama_msg.image.header.frame_id = "camera_frame"
+                        panorama_msg.image.header.frame_id = f"RGB_{self.iteration}"
                         panorama_msg.rotation_degree = float(self.orientation_angle_between_original_images_and_stitched_images)
 
                         self.stitched_rgb.publish(panorama_msg)
+
+                        panorama_msg = StitchedData()
+                        panorama_msg.image = self.bridge.cv2_to_imgmsg(panorama_mask, encoding="bgra8")
+                        panorama_msg.image.header.stamp = self.get_clock().now().to_msg()
+                        panorama_msg.image.header.frame_id = f"MASK_{self.iteration}"
+                        panorama_msg.rotation_degree = float(self.orientation_angle_between_original_images_and_stitched_images)
+                        self.stitched_mask.publish(panorama_msg)
+                        
+                        panorama_msg = StitchedData()
+                        panorama_msg.image = self.bridge.cv2_to_imgmsg(panorama_heatmap, encoding="bgra8")
+                        panorama_msg.image.header.stamp = self.get_clock().now().to_msg()
+                        panorama_msg.image.header.frame_id = f"HEATMAP_{self.iteration}"
+                        panorama_msg.rotation_degree = float(self.orientation_angle_between_original_images_and_stitched_images)
+                        self.stitched_heatmap.publish(panorama_msg)
 
                         cv2.imwrite(os.path.join(self.config['output_dir'], self.config['output_filename']) + str(self.iteration) + ".png", panorama)
                         cv2.imwrite(os.path.join(self.config['output_dir'], self.config['output_filename']) + str(self.iteration) + "_mask.png", panorama_mask)
@@ -614,9 +630,9 @@ class StitchingNode(Node):
                                 [0, 0, 1]])
 
         # Initialize the panorama and mask
-        panorama = np.zeros((panorama_height, panorama_width, 3), dtype=np.uint8)
-        panorama_mask = np.zeros((panorama_height, panorama_width, 3), dtype=np.uint8)
-        panorama_heatmap = np.zeros((panorama_height, panorama_width, 3), dtype=np.uint8)
+        panorama = np.zeros((panorama_height, panorama_width, 4), dtype=np.uint8)
+        panorama_mask = np.zeros((panorama_height, panorama_width, 4), dtype=np.uint8)
+        panorama_heatmap = np.zeros((panorama_height, panorama_width, 4), dtype=np.uint8)
         mask_panorama = np.zeros((panorama_height, panorama_width), dtype=np.uint8)
 
         # Warp and blend each image using the original blending logic
@@ -634,6 +650,10 @@ class StitchingNode(Node):
             warped_mask_image_i = cv2.warpPerspective(mask_images[i], H_total, (panorama_width, panorama_height))
             warped_heatmap_image_i = cv2.warpPerspective(heatmap_images[i], H_total, (panorama_width, panorama_height))
 
+            warped_image_i = cv2.cvtColor(warped_image_i, cv2.COLOR_BGR2BGRA)
+            warped_mask_image_i = cv2.cvtColor(warped_mask_image_i, cv2.COLOR_BGR2BGRA)
+            warped_heatmap_image_i = cv2.cvtColor(warped_heatmap_image_i, cv2.COLOR_BGR2BGRA)
+
             # Warp the mask
             hi, wi = image_i_np.shape[:2]
             mask_i = np.ones((hi, wi), dtype=np.uint8) * 255
@@ -641,9 +661,18 @@ class StitchingNode(Node):
 
             # Update panorama and mask_panorama with original blending logic
             mask_overlap = warped_mask_i > 0
-            panorama[mask_overlap] = warped_image_i[mask_overlap]
-            panorama_mask[mask_overlap] = warped_mask_image_i[mask_overlap]
-            panorama_heatmap[mask_overlap] = warped_heatmap_image_i[mask_overlap]
+            # panorama[mask_overlap] = warped_image_i[mask_overlap]
+            # panorama_mask[mask_overlap] = warped_mask_image_i[mask_overlap]
+            # panorama_heatmap[mask_overlap] = warped_heatmap_image_i[mask_overlap]
+
+            panorama[mask_overlap, :3] = warped_image_i[mask_overlap, :3]
+            panorama[mask_overlap, 3] = 255
+
+            panorama_mask[mask_overlap, :3] = warped_mask_image_i[mask_overlap, :3]
+            panorama_mask[mask_overlap, 3] = 255
+
+            panorama_heatmap[mask_overlap, :3] = warped_heatmap_image_i[mask_overlap, :3]
+            panorama_heatmap[mask_overlap, 3] = 255
 
             # Mask for masking panorama
             mask_panorama[mask_overlap] = warped_mask_i[mask_overlap]

@@ -170,7 +170,7 @@ class ReceiveData(Node):
 
         self.pst_tz = ZoneInfo("America/Vancouver")
         self.bridge = CvBridge()
-        qos_settings = QoSProfile(history=QoSHistoryPolicy.KEEP_LAST, depth=15, reliability=QoSReliabilityPolicy.RELIABLE, durability=QoSDurabilityPolicy.TRANSIENT_LOCAL)
+        qos_settings = QoSProfile(history=QoSHistoryPolicy.KEEP_LAST, depth=30, reliability=QoSReliabilityPolicy.RELIABLE, durability=QoSDurabilityPolicy.TRANSIENT_LOCAL)
         # self.publisher_ = self.create_publisher(Image, "request_segmentation", qos_profile=qos_settings)
         # self.gps_publisher_ = self.create_publisher(String,"image_gps", qos_profile=qos_settings)
 
