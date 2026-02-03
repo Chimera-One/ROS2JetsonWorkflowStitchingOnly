@@ -5,7 +5,7 @@ from rclpy.qos import QoSProfile, QoSPresetProfiles, QoSReliabilityPolicy, QoSHi
 from rclpy.context import Context
 
 #Executors
-from rclpy.callback_groups import ReentrantCallbackGroup
+from rclpy.callback_groups import ReentrantCallbackGroup, MutuallyExclusiveCallbackGroup
 from rclpy.executors import MultiThreadedExecutor, SingleThreadedExecutor
 
 #Msgs 
@@ -81,7 +81,7 @@ class StitchingNode(Node):
 
         self.bridge = CvBridge()
 
-        qos_settings = QoSProfile(history=QoSHistoryPolicy.KEEP_LAST, depth=30, reliability=QoSReliabilityPolicy.RELIABLE, durability=QoSDurabilityPolicy.TRANSIENT_LOCAL)
+        qos_settings = QoSProfile(history=QoSHistoryPolicy.KEEP_ALL, reliability=QoSReliabilityPolicy.RELIABLE, durability=QoSDurabilityPolicy.TRANSIENT_LOCAL)
         self.stitch_signaller = self.create_subscription(StitchData, 'mission_completion', self.stitch_signal, qos_profile=qos_settings)
         self.pose_filter_subscription = self.create_subscription(String, 'pose_filter', self.pose_filter, qos_profile=qos_settings)
         self.stitched_rgb = self.create_publisher(StitchedData, 'stitched_rgb', qos_profile=qos_settings)
@@ -440,6 +440,8 @@ class StitchingNode(Node):
             dy = (current_gps[0] - previous_gps[0]) * 2*np.pi*R_EARTH / 360.0
             dz = current_gps[2] - previous_gps[2]  # altitude difference`
 
+            self.get_logger().info(f"Image {index}'s dx: {dx}, dy: {dy}")
+
             # Comput pixel offset
             f_px = CALIBRATED_FOCAL_LENGTH
             x_px = dx * f_px / previous_gps[2]  # scale by previous altitude
@@ -463,6 +465,11 @@ class StitchingNode(Node):
                 [ w_resized/2,  h_resized/2],
                 [ w_resized/2, -h_resized/2]
             ], dtype=np.float32) + current_image_origin
+
+            self.get_logger().info(f"Image {index}'s x_px: {x_px}, y_px: {y_px}")
+            self.get_logger().info(f"Image {index}'s origin: {current_image_origin}")
+            self.get_logger().info(f"Image {index}'s corners: {current_corners}")
+            self.get_logger().info(f"Image {index}'s size: {current_image_size}")
 
             # Optional: rotate corners toward expected_vector
             # Uncomment if you want rotation
@@ -640,9 +647,23 @@ class StitchingNode(Node):
             stitch_count += 1
             print(f"Stitching image {stitch_count}/{total_stitching}")
 
+            # 1. Convert tensor to numpy FIRST
+            image_i_np = self.tensor_to_image(original_images[i])
+            hi, wi = image_i_np.shape[:2]
+
+            # 2. Now perform your coordinate math
             H = transformations[i]
-            # Compute the total transformation
             H_total = translation @ H
+
+            tx = H_total[0, 2]
+            ty = H_total[1, 2]
+
+            print(f"[Image {i}] Translation -> x: {tx:.2f}, y: {ty:.2f}")
+
+            center = np.array([[wi / 2, hi / 2, 1.0]])
+            center_pan = (H_total @ center.T).flatten()
+
+            print(f"[Image {i}] center -> x: {center_pan[0]:.2f}, y: {center_pan[1]:.2f}")
 
             # Warp the image
             image_i_np = self.tensor_to_image(original_images[i])

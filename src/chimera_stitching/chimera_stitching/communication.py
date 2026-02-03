@@ -7,7 +7,7 @@ from rclpy.context import Context
 
 
 #Executors
-from rclpy.callback_groups import ReentrantCallbackGroup
+from rclpy.callback_groups import ReentrantCallbackGroup, MutuallyExclusiveCallbackGroup
 from rclpy.executors import MultiThreadedExecutor
 
 #msgs
@@ -15,7 +15,7 @@ from std_msgs.msg import Float32, String
 from sensor_msgs.msg import Image
 from PIL import Image as PILImage
 from std_srvs.srv import Trigger, SetBool
-from custom_interfaces.msg import RGB,StitchData
+from custom_interfaces.msg import RGB, RGBMetadata, StitchData
 from custom_interfaces.srv import StitchReqCheck
 
 import struct
@@ -111,6 +111,9 @@ class ReceiveData(Node):
     def __init__(self):
         super().__init__('receive_data')
 
+        self.comms_group = ReentrantCallbackGroup()
+        self.processing_group = MutuallyExclusiveCallbackGroup()
+
         self.shutdown_flag = threading.Event()
 
         global HOST
@@ -166,11 +169,14 @@ class ReceiveData(Node):
         #mutex for writing to file
         self.csv_lock = threading.Lock()
 
+        #mutex for acceessing data for pose filtering
+        self.data_lock = threading.Lock()
+
 
 
         self.pst_tz = ZoneInfo("America/Vancouver")
         self.bridge = CvBridge()
-        qos_settings = QoSProfile(history=QoSHistoryPolicy.KEEP_LAST, depth=30, reliability=QoSReliabilityPolicy.RELIABLE, durability=QoSDurabilityPolicy.TRANSIENT_LOCAL)
+        qos_settings = QoSProfile(history=QoSHistoryPolicy.KEEP_ALL, reliability=QoSReliabilityPolicy.RELIABLE, durability=QoSDurabilityPolicy.TRANSIENT_LOCAL)
         # self.publisher_ = self.create_publisher(Image, "request_segmentation", qos_profile=qos_settings)
         # self.gps_publisher_ = self.create_publisher(String,"image_gps", qos_profile=qos_settings)
 
@@ -179,9 +185,11 @@ class ReceiveData(Node):
         self.mission_publisher_ = self.create_publisher(StitchData, "mission_completion", qos_profile=qos_settings)
         self.mission_publisher_check_ = self.create_client(StitchReqCheck, "mission_completion_check") # , qos_profile=qos_settings)
         # self.rgb_subscriber_ = self.create_subscription(Image, "stitched_rgb", self.store_stitched_rgb, qos_profile=qos_settings)
-        self.rgb_subscriber_ = self.create_subscription(RGB, "rgb_images", self.store_rgbs, qos_profile=qos_settings)
-        self.mask_subscriber_ = self.create_subscription(Image, "mask_images", self.store_masks, qos_profile=qos_settings)
-        self.heatmap_subscriber_ = self.create_subscription(Image, "heatmaps", self.store_heatmaps, qos_profile=qos_settings)
+        # self.rgb_subscriber_ = self.create_subscription(RGB, "rgb_images", self.store_rgbs, qos_profile=qos_settings, callback_group=self.comms_group)
+        self.rgb_subscriber_ = self.create_subscription(Image, "rgb_images", self.store_rgbs, qos_profile=qos_settings, callback_group=self.comms_group)
+        self.rgb_metadata_subscriber_ = self.create_subscription(RGBMetadata, "rgb_images_metadata", self.store_rgb_metadata, qos_profile=qos_settings, callback_group=self.comms_group)
+        self.mask_subscriber_ = self.create_subscription(Image, "mask_images", self.store_masks, qos_profile=qos_settings, callback_group=self.comms_group)
+        self.heatmap_subscriber_ = self.create_subscription(Image, "heatmaps", self.store_heatmaps, qos_profile=qos_settings, callback_group=self.comms_group)
         self.pose_filter_publisher = self.create_publisher(String, 'pose_filter', qos_profile=qos_settings)
 
         self.stitched_image_to_bytes = None
@@ -255,6 +263,7 @@ class ReceiveData(Node):
         self.gps_long_list = []
         self.gps_lat_list = []
         self.gps_alt_list = []
+        self.raw_image_names_list = []
         self.image_names_list = []
 
 
@@ -329,8 +338,9 @@ class ReceiveData(Node):
 
 
     def store_health_metrics(self, msg):
-        self.get_logger().info("Received health")
+        self.get_logger().info("Received HEALTH")
 
+        time.sleep(0.001)
         with self.health_buffer_lock:
             self.health_buffer.append(msg.data.split('\n'))
 
@@ -351,7 +361,7 @@ class ReceiveData(Node):
                 self.get_logger().info(f"Stitch request gps long: {self.mission_msg.gps_longitude}")
                 self.get_logger().info(f"Stitch request gps alt: {self.mission_msg.gps_altitude}")
             else:
-                self.get_logger().info(f"Stitch request result: False")
+                self.get_logger().info(f"Stitch request result: False. {len(self.raw_image_names_list)} images received. {len(self.image_names_list)} metadata received. ")
         except Exception as e:
             self.get_logger().error(f"Stitch service failed: {e}")
         finally:
@@ -372,10 +382,110 @@ class ReceiveData(Node):
         # self.get_logger().info(f"Received rgb. name: {msg.name}, lat: {msg.gps_latitude}, long: {msg.gps_longitude}, alt: {msg.gps_altitude}, roll: {msg.roll}, pitch: {msg.pitch}, yaw: {msg.yaw}, g_roll: {msg.gimbal_roll}, g_pitch: {msg.gimbal_pitch}, g_yaw: {msg.gimbal_yaw}")
 
         try:
-            self.get_logger().info(f"Received rgb. name: {msg.name}")
+            self.get_logger().info(f"Received RGB: {msg.header.frame_id}")
+            cv_rgb = self.bridge.imgmsg_to_cv2(msg)
+            rgb_filepath = os.path.join(self.rgb_dir, f"{msg.header.frame_id}.png")
+            cv2.imwrite(rgb_filepath, cv_rgb)
+            self.raw_image_names_list.append(msg.header.frame_id)
 
-            cv_rgb = self.bridge.imgmsg_to_cv2(msg.image)
-            
+        except Exception as e:
+            self.get_logger().error(f"RGB receive failed: {e}")
+
+
+#             cv_rgb = self.bridge.imgmsg_to_cv2(msg.image)
+#             
+#             self.gps_lat = msg.gps_latitude
+#             self.gps_long = msg.gps_longitude
+#             self.gps_alt = msg.gps_altitude
+# 
+#             self.roll = msg.roll
+#             self.pitch = msg.pitch
+#             self.yaw = msg.yaw
+# 
+#             self.gimbal_roll = msg.gimbal_roll
+#             self.gimbal_pitch = msg.gimbal_pitch
+#             self.gimbal_yaw = msg.gimbal_yaw
+#             
+#             time.sleep(0.001)
+#             with self.data_lock:
+#                 self.gps_lat_list.append(msg.gps_latitude)
+#                 self.gps_long_list.append(msg.gps_longitude)
+#                 self.gps_alt_list.append(msg.gps_altitude)
+#                 self.image_names_list.append(msg.name)
+# 
+#             Quaternion_flight_yaw = _gohlketransforms.quaternion_from_euler(math.radians(self.roll), math.radians(self.pitch), math.radians(self.yaw), 'sxyz')
+#             Quaternion_gimbal_yaw = _gohlketransforms.quaternion_from_euler(math.radians(self.gimbal_roll), math.radians(self.gimbal_pitch), math.radians(self.gimbal_yaw), 'sxyz')
+#             Quaternion_flight_yaw = Quaternion_flight_yaw / np.linalg.norm(Quaternion_flight_yaw)
+#             Quaternion_gimbal_yaw = Quaternion_gimbal_yaw / np.linalg.norm(Quaternion_gimbal_yaw)
+#             self.get_logger().info(f"Quaternion_flight_yaw: {Quaternion_flight_yaw}")
+#             self.get_logger().info(f"Quaternion_gimbal_yaw: {Quaternion_gimbal_yaw}")
+#             self.yaw_and_gimbal_quaternion =  _gohlketransforms.quaternion_multiply(Quaternion_flight_yaw, Quaternion_gimbal_yaw)
+#             
+#             if self.yaw_and_gimbal_quaternion_past is not None:
+# 
+#                 # enforce same hemisphere
+#                 if np.dot(self.yaw_and_gimbal_quaternion, self.yaw_and_gimbal_quaternion_past) < 0:
+#                     self.yaw_and_gimbal_quaternion = - self.yaw_and_gimbal_quaternion
+# 
+#                 forward_curr = quaternions.rotate_vector(np.array([0, 0, 1]), self.yaw_and_gimbal_quaternion)
+#                 forward_past = quaternions.rotate_vector(np.array([0, 0, 1]), self.yaw_and_gimbal_quaternion_past)
+# 
+#                 # q_rel = _gohlketransforms.quaternion_multiply(
+#                 #     self.yaw_and_gimbal_quaternion,
+#                 #     _gohlketransforms.quaternion_inverse(self.yaw_and_gimbal_quaternion_past)
+#                 # )
+#                 
+# 
+#                 dot = np.clip(np.dot(forward_curr, forward_past), -1.0, 1.0)
+#                 angle = math.acos(dot)
+# 
+#                 # angle = 2 * math.acos(np.clip(abs(q_rel[0]), -1.0, 1.0))
+#             else:
+#                 self.yaw_and_gimbal_quaternion_past = self.yaw_and_gimbal_quaternion.copy()
+#                 angle = 0
+# 
+#             # vector_of_yaw_and_gimbal_quaternion = quaternions.rotate_vector(_gohlketransforms.unit_vector(np.array([0, 0, 1])), self.yaw_and_gimbal_quaternion, True)
+#             # vector_of_yaw_and_gimbal_quaternion_past = quaternions.rotate_vector(_gohlketransforms.unit_vector(np.array([0, 0, 1])), self.yaw_and_gimbal_quaternion_past, True)
+#             # angle_between_two_quaternions = _gohlketransforms.angle_between_vectors(vector_of_yaw_and_gimbal_quaternion, vector_of_yaw_and_gimbal_quaternion_past)
+# 
+#             self.get_logger().info(f"Angle between current frame {msg.name} and past frame: {angle:.4f}. roll: {msg.roll}, pitch: {msg.pitch}, yaw: {msg.yaw}, g_roll: {msg.gimbal_roll}, g_pitch: {msg.gimbal_pitch}, g_yaw: {msg.gimbal_yaw}")
+# 
+#             if  angle > math.pi / 6:
+#                 self.pose_filter_triggered
+#                 pose_filter_msg = String()
+#                 pose_filter_msg.data = msg.name
+#                 self.pose_filter_publisher.publish(pose_filter_msg)
+#                 self.get_logger().info(f"---Pose filtered {msg.name}")
+# 
+#             self.yaw_and_gimbal_quaternion_past = self.yaw_and_gimbal_quaternion.copy()
+#             
+#             cv_rgb = cv2.resize(cv_rgb, (1920, 1440), interpolation=cv2.INTER_AREA)
+# 
+#             rgb_encoded = cv2.imencode('.png', cv_rgb)[1]
+#             rgb_to_bytes = rgb_encoded.tobytes()
+# 
+#             # with self.rgb_buffer_lock:
+#             #     self.rgb_buffer.append(rgb_to_bytes)
+# 
+# 
+#             #store rgb debug
+#             # timestamp = datetime.now(self.pst_tz).strftime("%Y%m%d_%H%M%S_%f")
+#             rgb_filepath = os.path.join(self.rgb_dir, f"{msg.name}.png")
+# 
+# 
+#             cv2.imwrite(rgb_filepath, cv_rgb) 
+#             self.last_image_time = time.monotonic()
+# 
+#             # heatmap_pil.save(heatmap_filepath)
+#             # with self.rgb_png:
+#             #     self.rgb_png_buffer.append(rgb_filepath)
+#         except Exception as e:
+#             self.get_logger().error(f"RGB receive failed: {e}")
+
+    def store_rgb_metadata(self, msg):
+        self.get_logger().info(f"Received rgb metadata. name: {msg.name}, lat: {msg.gps_latitude}, long: {msg.gps_longitude}, alt: {msg.gps_altitude}, roll: {msg.roll}, pitch: {msg.pitch}, yaw: {msg.yaw}, g_roll: {msg.gimbal_roll}, g_pitch: {msg.gimbal_pitch}, g_yaw: {msg.gimbal_yaw}")
+
+        try:
             self.gps_lat = msg.gps_latitude
             self.gps_long = msg.gps_longitude
             self.gps_alt = msg.gps_altitude
@@ -387,11 +497,13 @@ class ReceiveData(Node):
             self.gimbal_roll = msg.gimbal_roll
             self.gimbal_pitch = msg.gimbal_pitch
             self.gimbal_yaw = msg.gimbal_yaw
-
-            self.gps_lat_list.append(msg.gps_latitude)
-            self.gps_long_list.append(msg.gps_longitude)
-            self.gps_alt_list.append(msg.gps_altitude)
-            self.image_names_list.append(msg.name)
+            
+            time.sleep(0.001)
+            with self.data_lock:
+                self.gps_lat_list.append(msg.gps_latitude)
+                self.gps_long_list.append(msg.gps_longitude)
+                self.gps_alt_list.append(msg.gps_altitude)
+                self.image_names_list.append(msg.name)
 
             Quaternion_flight_yaw = _gohlketransforms.quaternion_from_euler(math.radians(self.roll), math.radians(self.pitch), math.radians(self.yaw), 'sxyz')
             Quaternion_gimbal_yaw = _gohlketransforms.quaternion_from_euler(math.radians(self.gimbal_roll), math.radians(self.gimbal_pitch), math.radians(self.gimbal_yaw), 'sxyz')
@@ -439,10 +551,10 @@ class ReceiveData(Node):
 
             self.yaw_and_gimbal_quaternion_past = self.yaw_and_gimbal_quaternion.copy()
             
-            cv_rgb = cv2.resize(cv_rgb, (1920, 1440), interpolation=cv2.INTER_AREA)
+            # cv_rgb = cv2.resize(cv_rgb, (1920, 1440), interpolation=cv2.INTER_AREA)
 
-            rgb_encoded = cv2.imencode('.png', cv_rgb)[1]
-            rgb_to_bytes = rgb_encoded.tobytes()
+            # rgb_encoded = cv2.imencode('.png', cv_rgb)[1]
+            # rgb_to_bytes = rgb_encoded.tobytes()
 
             # with self.rgb_buffer_lock:
             #     self.rgb_buffer.append(rgb_to_bytes)
@@ -450,21 +562,21 @@ class ReceiveData(Node):
 
             #store rgb debug
             # timestamp = datetime.now(self.pst_tz).strftime("%Y%m%d_%H%M%S_%f")
-            rgb_filepath = os.path.join(self.rgb_dir, f"{msg.name}.png")
+            # rgb_filepath = os.path.join(self.rgb_dir, f"{msg.name}.png")
 
 
-            cv2.imwrite(rgb_filepath, cv_rgb) 
+            # cv2.imwrite(rgb_filepath, cv_rgb) 
             self.last_image_time = time.monotonic()
 
             # heatmap_pil.save(heatmap_filepath)
             # with self.rgb_png:
             #     self.rgb_png_buffer.append(rgb_filepath)
         except Exception as e:
-            self.get_logger().error(f"RGB receive failed: {e}")
+            self.get_logger().error(f"RGB metadata receive failed: {e}")
 
 
     def store_heatmaps(self, msg):
-        self.get_logger().info("Received heatmap")
+        self.get_logger().info(f"Received HEATMAP: {msg.header.frame_id}")
 
         cv_heatmap = self.bridge.imgmsg_to_cv2(msg)
 
@@ -494,7 +606,7 @@ class ReceiveData(Node):
 
     def store_masks(self, msg):
 
-        self.get_logger().info("Received mask image")
+        self.get_logger().info(f"Received MASK: {msg.header.frame_id}")
 
         cv_mask = self.bridge.imgmsg_to_cv2(msg)
 
@@ -615,7 +727,7 @@ class ReceiveData(Node):
                     )
                     self.last_image_time = time.monotonic()
 
-                    if not self.stitch_req and not self.stitch_request_in_flight:
+                    if not self.stitch_req and not self.stitch_request_in_flight and len(self.raw_image_names_list) == len(self.image_names_list):
                         if not self.mission_publisher_check_.service_is_ready():
                             self.get_logger().warn("Stitch service not ready")
                             continue
@@ -625,8 +737,10 @@ class ReceiveData(Node):
                         request.numberofimages = len(self.image_names_list)
                         future = self.mission_publisher_check_.call_async(request)
                         future.add_done_callback(self.on_stitch_response)
-
-                    # self.mission_publisher_.publish(self.mission_msg)
+                    elif not self.stitch_req and not self.stitch_request_in_flight:
+                        self.get_logger().warn(f"Metadata do not match the rgb images received yet. {len(self.raw_image_names_list)} images received. {len(self.image_names_list)} metadata received.")
+                    else:
+                        self.get_logger().warn(f"Not stitched ready yet. Stitch req: {self.stitch_req}. Stitch req in flight: {self.stitch_request_in_flight}.")
 
                     # Prevent duplicate publishes
                     self.stitch_req = False

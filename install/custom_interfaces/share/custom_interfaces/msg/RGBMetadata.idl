@@ -1,0 +1,36 @@
+// generated from rosidl_adapter/resource/msg.idl.em
+// with input from custom_interfaces/msg/RGBMetadata.msg
+// generated code does not contain a copyright notice
+
+
+module custom_interfaces {
+  module msg {
+    @verbatim (language="comment", text=
+      "primitives")
+    struct RGBMetadata {
+      string name;
+
+      double gps_latitude;
+
+      double gps_longitude;
+
+      double gps_altitude;
+
+      int32 gps_signal_level;
+
+      double compass;
+
+      double roll;
+
+      double pitch;
+
+      double yaw;
+
+      double gimbal_roll;
+
+      double gimbal_pitch;
+
+      double gimbal_yaw;
+    };
+  };
+};

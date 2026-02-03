@@ -16,6 +16,7 @@ find_package(rosidl_default_generators REQUIRED)
 
 rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/RGB.msg"
+  "msg/RGBMetadata.msg"
   "msg/StitchData.msg"
   "msg/StitchedData.msg"
   "srv/StitchReqCheck.srv"

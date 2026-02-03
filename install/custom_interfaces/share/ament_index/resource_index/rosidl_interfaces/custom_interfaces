@@ -1,5 +1,7 @@
 msg/RGB.idl
 msg/RGB.msg
+msg/RGBMetadata.idl
+msg/RGBMetadata.msg
 msg/StitchData.idl
 msg/StitchData.msg
 msg/StitchedData.idl
