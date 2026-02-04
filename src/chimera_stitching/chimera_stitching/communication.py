@@ -580,7 +580,7 @@ class ReceiveData(Node):
 
         cv_heatmap = self.bridge.imgmsg_to_cv2(msg)
 
-        cv_heatmap = cv2.resize(cv_heatmap, (1920, 1440), interpolation=cv2.INTER_AREA)
+        cv_heatmap = cv2.resize(cv_heatmap, (1536, 1152), interpolation=cv2.INTER_AREA)
 
         heatmap_encoded = cv2.imencode('.png', cv_heatmap)[1]
         heatmap_to_bytes = heatmap_encoded.tobytes()
@@ -610,7 +610,7 @@ class ReceiveData(Node):
 
         cv_mask = self.bridge.imgmsg_to_cv2(msg)
 
-        cv_mask = cv2.resize(cv_mask, (1920, 1440), interpolation=cv2.INTER_AREA)
+        cv_mask = cv2.resize(cv_mask, (1536, 1152), interpolation=cv2.INTER_AREA)
 
         mask_encode = cv2.imencode('.png', cv_mask)[1]
         mask_to_bytes = mask_encode.tobytes()
@@ -938,7 +938,7 @@ def main(args=None):
 
         receive_data = ReceiveData()
 
-        executor = MultiThreadedExecutor(num_threads=3)
+        executor = MultiThreadedExecutor(num_threads=8)
         executor.add_node(receive_data)
 
         executor.spin()
