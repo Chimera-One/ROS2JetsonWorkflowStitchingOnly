@@ -20,6 +20,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/StitchData.msg"
   "msg/StitchedData.msg"
   "srv/StitchReqCheck.srv"
+  "srv/RGBStoreCheck.srv"
   DEPENDENCIES sensor_msgs # Add packages that above messages depend on, in this case sensor_msgs for RGB.msg
 )
 

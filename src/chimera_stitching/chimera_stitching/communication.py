@@ -16,7 +16,7 @@ from sensor_msgs.msg import Image
 from PIL import Image as PILImage
 from std_srvs.srv import Trigger, SetBool
 from custom_interfaces.msg import RGB, RGBMetadata, StitchData
-from custom_interfaces.srv import StitchReqCheck
+from custom_interfaces.srv import StitchReqCheck, RGBStoreCheck
 
 import struct
 
@@ -183,7 +183,8 @@ class ReceiveData(Node):
 
         #stitched images
         self.mission_publisher_ = self.create_publisher(StitchData, "mission_completion", qos_profile=qos_settings)
-        self.mission_publisher_check_ = self.create_client(StitchReqCheck, "mission_completion_check") # , qos_profile=qos_settings)
+        self.mission_publisher_check_ = self.create_client(StitchReqCheck, "mission_completion_check", qos_profile=qos_settings)
+        self.store_rgb_check_ = self.create_service(RGBStoreCheck, "rgb_service", self.rgb_service_callback, qos_profile=qos_settings)
         # self.rgb_subscriber_ = self.create_subscription(Image, "stitched_rgb", self.store_stitched_rgb, qos_profile=qos_settings)
         # self.rgb_subscriber_ = self.create_subscription(RGB, "rgb_images", self.store_rgbs, qos_profile=qos_settings, callback_group=self.comms_group)
         self.rgb_subscriber_ = self.create_subscription(Image, "rgb_images", self.store_rgbs, qos_profile=qos_settings, callback_group=self.comms_group)
@@ -481,6 +482,28 @@ class ReceiveData(Node):
 #             #     self.rgb_png_buffer.append(rgb_filepath)
 #         except Exception as e:
 #             self.get_logger().error(f"RGB receive failed: {e}")
+
+
+    def rgb_service_callback(self, request, response):
+        try:
+            self.get_logger().info(f"Received RGB: {request.image.header.frame_id}")
+            cv_rgb = self.bridge.imgmsg_to_cv2(request.image)
+            rgb_filepath = os.path.join(self.rgb_dir, f"{request.image.header.frame_id}.png")
+            cv2.imwrite(rgb_filepath, cv_rgb)
+            self.raw_image_names_list.append(request.image.header.frame_id)
+
+            response.success = True
+            response.numberofimagesreceived = len(self.raw_image_names_list)
+            response.message = f"RGB image {request.image.header.frame_id} received. Total {len(self.raw_image_names_list)} images received"
+        except Exception as e:
+            self.get_logger().error(f"RGB service callback failed: {e}")
+            response.success = False
+            response.numberofimagesreceived = len(self.raw_image_names_list)
+            response.message = f"RGB service callback failed: {e}"
+
+        self.last_image_time = time.monotonic()
+        return response
+
 
     def store_rgb_metadata(self, msg):
         self.get_logger().info(f"Received rgb metadata. name: {msg.name}, lat: {msg.gps_latitude}, long: {msg.gps_longitude}, alt: {msg.gps_altitude}, roll: {msg.roll}, pitch: {msg.pitch}, yaw: {msg.yaw}, g_roll: {msg.gimbal_roll}, g_pitch: {msg.gimbal_pitch}, g_yaw: {msg.gimbal_yaw}")

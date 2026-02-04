@@ -6,6 +6,10 @@ msg/StitchData.idl
 msg/StitchData.msg
 msg/StitchedData.idl
 msg/StitchedData.msg
+srv/RGBStoreCheck.idl
+srv/RGBStoreCheck.srv
+srv/RGBStoreCheck_Request.msg
+srv/RGBStoreCheck_Response.msg
 srv/StitchReqCheck.idl
 srv/StitchReqCheck.srv
 srv/StitchReqCheck_Request.msg
