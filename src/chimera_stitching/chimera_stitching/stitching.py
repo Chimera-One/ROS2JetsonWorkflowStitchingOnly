@@ -216,6 +216,8 @@ class StitchingNode(Node):
 
                     print("Matching keypoints and estimating transformations...")
                     transformations, all_corners = self.match_keypoints(self.feats_list, self.original_sizes, self.config)
+
+                    
                     # panorama = self.stitch_images(self.original_images, transformations, all_corners)
                     panorama, panorama_mask, panorama_heatmap = self.stitch_images(self.original_images, self.mask_images, self.heatmap_images, transformations, all_corners)
                     print("Stitching Pipeline completed.")
@@ -224,7 +226,7 @@ class StitchingNode(Node):
                     bb_width = int(np.ceil(bb_x_max - bb_x_min))
                     bb_height = int(np.ceil(bb_y_max - bb_y_min))
 
-                    if (panorama_width <= bb_width and panorama_height <= bb_height) or (panorama_height <= bb_width and panorama_width <= bb_height) or self.iteration >= 2:
+                    if (panorama_width <= bb_width and panorama_height <= bb_height) or (panorama_height <= bb_width and panorama_width <= bb_height) or self.iteration >= 1:
                         print(f"--- Panorama fits inside the bounding box. Iteration: {self.iteration}")
                         print(f"Panorama size: ({panorama_width}, {panorama_height})")
                         print(f"Bounding box size: ({bb_width}, {bb_height})")
@@ -298,6 +300,7 @@ class StitchingNode(Node):
                         result = subprocess.run([SCRIPT_PATH])
 
                         self.is_dir_reset = True
+                        self.iteration = 1
 
                     else:
 

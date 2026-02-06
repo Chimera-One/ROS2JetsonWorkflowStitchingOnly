@@ -569,7 +569,7 @@ class ReceiveData(Node):
                 self.pose_filter_triggered
                 pose_filter_msg = String()
                 pose_filter_msg.data = msg.name
-                self.pose_filter_publisher.publish(pose_filter_msg)
+                # self.pose_filter_publisher.publish(pose_filter_msg)
                 self.get_logger().info(f"---Pose filtered {msg.name}")
 
             self.yaw_and_gimbal_quaternion_past = self.yaw_and_gimbal_quaternion.copy()
