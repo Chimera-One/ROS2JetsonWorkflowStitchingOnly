@@ -43,6 +43,9 @@ import math
 #Transforms
 from transforms3d import _gohlketransforms
 
+#Garbage Collector
+import gc
+
 
 INCLUDE_DIR = "/home/chimera/ros2_ws/src/chimera_stitching/include"
 SCRIPT_PATH = "/home/chimera/scripts/mission_reset.sh"
@@ -93,6 +96,8 @@ class StitchingNode(Node):
 
         # List of GPSs for StitchData
         self.image_data = None
+
+        self.extractor = None
 
         #@TODO: Need to destroy threads in stop sequence
 
@@ -151,6 +156,11 @@ class StitchingNode(Node):
                     self.config = self.load_config(CONFIG_PATH)
                     # self.image_paths, self.mask_paths, self.heatmap_paths = self.get_image_paths(self.config)
 
+                    if self.extractor is None:
+                        self.get_logger().info(f"Loading {self.config['extractor']}...")
+                        if self.config['extractor'] == 'superpoint':
+                            self.extractor = SuperPoint(max_num_keypoints=2048).eval().to(self.config["device"])
+
                     print(f"Iteration: {self.iteration}")
 
                     self.get_image_paths(self.config)
@@ -185,14 +195,20 @@ class StitchingNode(Node):
                     processed_count = 0
                     total_images = len(self.image_paths)
 
-                    with ThreadPoolExecutor(max_workers=2) as executor:
-                        results = executor.map(lambda path: self.process_image(path, self.config), self.image_paths)
-
-                    for (image_tensor, size, feats), mask_path, heatmap_path in zip(results, self.mask_paths, self.heatmap_paths):
+                    # with ThreadPoolExecutor(max_workers=2) as executor:
+                    #     results = executor.map(lambda path: self.process_image(path, self.config), self.image_paths)
+                    
+                    results = []
+                    for path in self.image_paths:
+                        print(f"Extracting features: {path}")
+                        result = self.process_image(path, self.config) # Process one by one
+                        results.append(result)
+                    
+                    for (size, feats), mask_path, heatmap_path in zip(results, self.mask_paths, self.heatmap_paths):
                         processed_count += 1
                         print(f"Processed {processed_count}/{total_images} images.")
                         
-                        if image_tensor is not None:
+                        if feats is not None:
                             # Load the mask as a numpy array
                             # using imread to get the np array (default BGR)
                             # Add cv2.IMREAD_GRAYSCALE if your stitching pipeline expects 1-channel masks
@@ -208,18 +224,27 @@ class StitchingNode(Node):
                                 continue
 
                             # Only append data if both image and mask are valid
-                            self.original_images.append(image_tensor)
                             self.original_sizes.append(size)
                             self.feats_list.append(feats)
                             self.mask_images.append(mask_np)
                             self.heatmap_images.append(heatmap_np)
 
+                    gc.collect()
+                    torch.cuda.empty_cache()
+
                     print("Matching keypoints and estimating transformations...")
                     transformations, all_corners = self.match_keypoints(self.feats_list, self.original_sizes, self.config)
 
-                    
+                    print("Keypoints matched clear memory")
+                    self.original_images.clear()
+                    self.mask_images.clear()
+                    self.heatmap_images.clear()
+                    self.feats_list.clear()
+                    del self.original_images, self.mask_images, self.heatmap_images, self.feats_list
+                    gc.collect()
+
                     # panorama = self.stitch_images(self.original_images, transformations, all_corners)
-                    panorama, panorama_mask, panorama_heatmap = self.stitch_images(self.original_images, self.mask_images, self.heatmap_images, transformations, all_corners)
+                    panorama, panorama_mask, panorama_heatmap = self.stitch_images(transformations, all_corners)
                     print("Stitching Pipeline completed.")
 
                     panorama_height, panorama_width = panorama.shape[:2]
@@ -535,8 +560,11 @@ class StitchingNode(Node):
             feats['scores'] = feats.get('scores', torch.ones((1, feats['keypoints'].shape[1]), device=feats['keypoints'].device))
             feats = rbd(feats)
 
+
+        del image_resized_tensor, image_resized
+
         print(f"Extracted features from image: {path}")
-        return image_tensor, (h_cropped, w_cropped), feats
+        return (h_cropped, w_cropped), feats
 
     def tensor_to_image(self, tensor):
         """Convert a PyTorch tensor to a NumPy image."""
@@ -622,7 +650,7 @@ class StitchingNode(Node):
 
 
 
-    def stitch_images(self, original_images, mask_images, heatmap_images, transformations, all_corners):
+    def stitch_images(self, transformations, all_corners):
         """Stitch images together into a panorama using original blending logic."""
         print("Starting stitching of images...")
         all_corners = np.vstack(all_corners)
@@ -631,7 +659,7 @@ class StitchingNode(Node):
         panorama_width = x_max - x_min
         panorama_height = y_max - y_min
 
-        total_stitching = len(original_images)
+        total_stitching = len(self.image_paths)
         stitch_count = 0
 
         # Compute the translation matrix
@@ -646,15 +674,30 @@ class StitchingNode(Node):
         mask_panorama = np.zeros((panorama_height, panorama_width), dtype=np.uint8)
 
         # Warp and blend each image using the original blending logic
-        for i in range(len(original_images)):
+        for i in range(len(self.image_paths)):
             stitch_count += 1
             print(f"Stitching image {stitch_count}/{total_stitching}")
 
-            # 1. Convert tensor to numpy FIRST
-            image_i_np = self.tensor_to_image(original_images[i])
-            hi, wi = image_i_np.shape[:2]
+            # 1. Load image
+            rgb_image_cv = cv2.imread(self.image_paths[i])
+            mask_image_cv = cv2.imread(self.mask_paths[i])
+            heatmap_image_cv = cv2.imread(self.heatmap_paths[i])
+            print(f"Processing image: {self.image_paths[i]}, {self.mask_paths[i]}, {self.heatmap_paths[i]}")
+            if rgb_image_cv is None or mask_image_cv is None or heatmap_image_cv is None :
+                print(f"Error loading image {self.image_paths[i]}, {self.mask_paths[i]}, {self.heatmap_paths[i]}")
+                return None, None, None
 
-            # 2. Now perform your coordinate math
+            # 2. Crop image
+            rgb_h, rgb_w = rgb_image_cv.shape[:2]
+            mask_h, mask_w = mask_image_cv.shape[:2]
+            heatmap_h, heatmap_w = heatmap_image_cv.shape[:2]
+            rgb_image_cropped = rgb_image_cv[self.config["top_crop"]:rgb_h - self.config["bottom_crop"], self.config["left_crop"]:rgb_w - self.config["right_crop"]]
+            mask_image_cropped = mask_image_cv[self.config["top_crop"]:mask_h - self.config["bottom_crop"], self.config["left_crop"]:mask_w - self.config["right_crop"]]
+            heatmap_image_cropped = heatmap_image_cv[self.config["top_crop"]:heatmap_h - self.config["bottom_crop"], self.config["left_crop"]:heatmap_w - self.config["right_crop"]]
+
+            hi, wi = rgb_image_cropped.shape[:2]
+
+            # 5. Now perform your coordinate math
             H = transformations[i]
             H_total = translation @ H
 
@@ -669,17 +712,16 @@ class StitchingNode(Node):
             print(f"[Image {i}] center -> x: {center_pan[0]:.2f}, y: {center_pan[1]:.2f}")
 
             # Warp the image
-            image_i_np = self.tensor_to_image(original_images[i])
-            warped_image_i = cv2.warpPerspective(image_i_np, H_total, (panorama_width, panorama_height))
-            warped_mask_image_i = cv2.warpPerspective(mask_images[i], H_total, (panorama_width, panorama_height))
-            warped_heatmap_image_i = cv2.warpPerspective(heatmap_images[i], H_total, (panorama_width, panorama_height))
+            warped_image_i = cv2.warpPerspective(rgb_image_cropped, H_total, (panorama_width, panorama_height))
+            warped_mask_image_i = cv2.warpPerspective(mask_image_cropped, H_total, (panorama_width, panorama_height))
+            warped_heatmap_image_i = cv2.warpPerspective(heatmap_image_cropped, H_total, (panorama_width, panorama_height))
 
             warped_image_i = cv2.cvtColor(warped_image_i, cv2.COLOR_BGR2BGRA)
             warped_mask_image_i = cv2.cvtColor(warped_mask_image_i, cv2.COLOR_BGR2BGRA)
             warped_heatmap_image_i = cv2.cvtColor(warped_heatmap_image_i, cv2.COLOR_BGR2BGRA)
 
             # Warp the mask
-            hi, wi = image_i_np.shape[:2]
+            hi, wi = rgb_image_cropped.shape[:2]
             mask_i = np.ones((hi, wi), dtype=np.uint8) * 255
             warped_mask_i = cv2.warpPerspective(mask_i, H_total, (panorama_width, panorama_height))
 
@@ -700,7 +742,12 @@ class StitchingNode(Node):
 
             # Mask for masking panorama
             mask_panorama[mask_overlap] = warped_mask_i[mask_overlap]
-            print(f"Stitched image {i + 1} of {len(original_images)}")
+
+            del rgb_image_cv, rgb_image_cropped, warped_image_i, mask_image_cv, mask_image_cropped, warped_mask_image_i, heatmap_image_cv, heatmap_image_cropped, warped_heatmap_image_i
+            gc.collect()
+            torch.cuda.empty_cache()
+
+            print(f"Stitched image {i + 1} of {len(self.image_paths)}")
 
         print("Stitching completed.")
         return panorama, panorama_mask, panorama_heatmap
