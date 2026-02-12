@@ -173,6 +173,7 @@ class StitchingNode(Node):
                     self.image_paths = [data["image_path"] for _, data in ordered_items]
                     self.mask_paths = [data["mask_path"] for _, data in ordered_items]
                     self.heatmap_paths = [data["heatmap_path"] for _, data in ordered_items]
+                    self.image_stitch_paths = []
                     self.gps_lat = [data["lat"] for _, data in ordered_items]
                     self.gps_lon = [data["lon"] for _, data in ordered_items]
 
@@ -201,8 +202,8 @@ class StitchingNode(Node):
                     results = []
                     for path in self.image_paths:
                         print(f"Extracting features: {path}")
-                        result = self.process_image(path, self.config) # Process one by one
-                        results.append(result)
+                        size, feats = self.process_image(path, self.config) # Process one by one
+                        results.append((size, feats))
                     
                     for (size, feats), mask_path, heatmap_path in zip(results, self.mask_paths, self.heatmap_paths):
                         processed_count += 1
@@ -529,7 +530,7 @@ class StitchingNode(Node):
         print(f"Processing image: {path}")
         if image_cv is None:
             print(f"Error loading image {path}")
-            return None, None, None
+            return None, None
 
         # Crop image
         h, w = image_cv.shape[:2]
@@ -539,31 +540,75 @@ class StitchingNode(Node):
         h_cropped, w_cropped = image_cropped.shape[:2]
 
         # Convert cropped image to tensor
-        image_tensor = transforms.ToTensor()(image_cropped).to(config["device"]).unsqueeze(0)
+        # image_tensor = transforms.ToTensor()(image_cropped).to(config["device"]).unsqueeze(0)
 
         # Resize image for feature extraction
         image_resized = cv2.resize(image_cropped, (config["fixed_width"], config["fixed_height"]), interpolation=cv2.INTER_LINEAR)
         image_resized_tensor = transforms.ToTensor()(image_resized).to(config["device"]).unsqueeze(0)
 
         # Extract features
-        if config['extractor'] == 'superpoint':
+        if self.extractor is None:
             print('Using SuperPoint for feature extraction')
-            extractor = SuperPoint(max_num_keypoints=2048).eval().to(config["device"])
-        if config['extractor'] == 'aliked':
+            self.extractor = SuperPoint(max_num_keypoints=2048).eval().to(config["device"])
+        elif config['extractor'] == 'aliked':
             print('Using ALIKED for feature extraction')
-            extractor = ALIKED(max_num_keypoints=2048).eval().to(config["device"])
+            self.extractor = ALIKED(max_num_keypoints=2048).eval().to(config["device"])
 
         with torch.no_grad():
-            feats = extractor.extract(image_resized_tensor)
+            feats = self.extractor.extract(image_resized_tensor)
             feats['keypoints'] = feats['keypoints'].unsqueeze(0)
             feats['descriptors'] = feats['descriptors'].unsqueeze(0)
             feats['scores'] = feats.get('scores', torch.ones((1, feats['keypoints'].shape[1]), device=feats['keypoints'].device))
             feats = rbd(feats)
+            # if 'scores' not in feats:
+            #     # Create a tensor of ones with the same length as keypoints
+            #     num_kpts = feats['keypoints'].shape[0]
+            #     feats['scores'] = torch.ones(num_kpts, device=feats['keypoints'].device)
+# 
+            # # Filter top 1000 points by score
+            # k = min(1000, feats['keypoints'].shape[0])
+            # indices = torch.topk(feats['scores'], k=k).indices
+            # 
+            # # 5. DYNAMIC FILTERING: Slice EVERY tensor in the dict that matches the keypoint count
+            # # This prevents the "desync" error
+            # for key in feats:
+            #     if torch.is_tensor(feats[key]) and feats[key].shape[0] == num_kpts:
+            #         feats[key] = feats[key][indices]
 
 
         del image_resized_tensor, image_resized
 
-        print(f"Extracted features from image: {path}")
+        kpts = feats['keypoints'].cpu().numpy()
+
+        if kpts.ndim == 3:
+            kpts = kpts[0]
+
+        
+        scale_x, scale_y = w_cropped / config["fixed_width"], h_cropped / config["fixed_height"]
+        vis_image = image_cropped.copy()
+
+        print(f"Extracted {len(kpts)} features from {path}")
+        print(f"kpts shape: {kpts.shape}")
+        print(f"kpts : {kpts}")
+
+        for i in range(len(kpts)):
+            # .item() ensures we have a standard Python float
+            raw_x = float(kpts[i, 0])
+            raw_y = float(kpts[i, 1])
+            
+            px = int(round(raw_x * scale_x))
+            py = int(round(raw_y * scale_y))
+            
+            cv2.circle(vis_image, (px, py), 3, (0, 0, 255), -1)
+
+        # Save the result
+        filename = os.path.basename(path)
+        save_path = os.path.join(self.config['output_dir'], self.config['output_filename']) + f"{filename}"
+        cv2.imwrite(save_path, vis_image)
+        self.image_stitch_paths.append(save_path)
+
+        print(f"Saved {len(kpts)} marked images.")
+
         return (h_cropped, w_cropped), feats
 
     def tensor_to_image(self, tensor):
@@ -583,7 +628,9 @@ class StitchingNode(Node):
 
         accumulated_H = np.eye(3)
         transformations = [accumulated_H.copy()]
-        all_corners = []
+        h0, w0 = original_sizes[0]
+        corners0 = np.array([[0, 0], [0, h0], [w0, h0], [w0, 0]], dtype=np.float32)
+        all_corners = [corners0]
 
         total_matches = len(feats_list) - 1
         match_count = 0
@@ -595,7 +642,7 @@ class StitchingNode(Node):
             matches_input = {"image0": feats0, "image1": feats1}
             matches01 = matcher(matches_input)
             matches01_rbd = rbd(matches01)
-            print('matches01', matches01)
+            # print('matches01', matches01)
 
             kpts0 = feats0["keypoints"].squeeze(0)
             kpts1 = feats1["keypoints"].squeeze(0)
@@ -624,12 +671,38 @@ class StitchingNode(Node):
             m_kpts1_orig[:, 0] *= scale_xi
             m_kpts1_orig[:, 1] *= scale_yi
 
+            image_cv = cv2.imread(self.image_stitch_paths[i])
+
+            h, w = image_cv.shape[:2]
+
+            scale_x, scale_y = w / config["fixed_width"], h / config["fixed_height"]
+            vis_image = image_cv.copy()
+            
+            print(f"Matching image: {self.image_stitch_paths[i]}")
+            if vis_image is None:
+                print(f"Error loading image {self.image_stitch_paths[i]}")
+                return None, None
+
+            for j in range(len(m_kpts1)):
+                # .item() ensures we have a standard Python float
+                raw_x = float(m_kpts1[j, 0])
+                raw_y = float(m_kpts1[j, 1])
+                
+                px = int(round(raw_x * scale_x))
+                py = int(round(raw_y * scale_y))
+                
+                cv2.circle(vis_image, (px, py), 3, (0, 255, 0), -1)
+
+            filename = os.path.basename(self.image_paths[i])
+            save_path = os.path.join(self.config['output_dir'], self.config['output_filename']) + f"{filename}"
+            cv2.imwrite(save_path, vis_image)
+
             m_kpts0_np = m_kpts0_orig.cpu().numpy()
             m_kpts1_np = m_kpts1_orig.cpu().numpy()
 
             if len(m_kpts0_np) >= 3:
-                ransacThreshold = 3.0 # / self.iteration
-                H_affine, inliers = cv2.estimateAffinePartial2D(m_kpts1_np, m_kpts0_np, method=cv2.RANSAC, ransacReprojThreshold=ransacThreshold) #can also be 'LMEDS'
+                ransacThreshold = 2.0 # / self.iteration
+                H_affine, inliers = cv2.estimateAffinePartial2D(m_kpts1_np, m_kpts0_np, method=cv2.RANSAC, maxIters=5000, confidence=0.999, ransacReprojThreshold=ransacThreshold) #can also be 'LMEDS'
                 if H_affine is not None:
                     H = np.vstack([H_affine, [0, 0, 1]])
                     accumulated_H = accumulated_H @ H
