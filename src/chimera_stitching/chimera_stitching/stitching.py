@@ -202,14 +202,14 @@ class StitchingNode(Node):
                     results = []
                     for path in self.image_paths:
                         print(f"Extracting features: {path}")
-                        size, feats = self.process_image(path, self.config) # Process one by one
-                        results.append((size, feats))
+                        size, multi_feats = self.process_image(path, self.config) # Process one by one
+                        results.append((size, multi_feats))
                     
-                    for (size, feats), mask_path, heatmap_path in zip(results, self.mask_paths, self.heatmap_paths):
+                    for (size, multi_feats), mask_path, heatmap_path in zip(results, self.mask_paths, self.heatmap_paths):
                         processed_count += 1
                         print(f"Processed {processed_count}/{total_images} images.")
                         
-                        if feats is not None:
+                        if multi_feats is not None:
                             # Load the mask as a numpy array
                             # using imread to get the np array (default BGR)
                             # Add cv2.IMREAD_GRAYSCALE if your stitching pipeline expects 1-channel masks
@@ -226,7 +226,7 @@ class StitchingNode(Node):
 
                             # Only append data if both image and mask are valid
                             self.original_sizes.append(size)
-                            self.feats_list.append(feats)
+                            self.feats_list.append(multi_feats)
                             self.mask_images.append(mask_np)
                             self.heatmap_images.append(heatmap_np)
 
@@ -554,12 +554,51 @@ class StitchingNode(Node):
             print('Using ALIKED for feature extraction')
             self.extractor = ALIKED(max_num_keypoints=2048).eval().to(config["device"])
 
-        with torch.no_grad():
-            feats = self.extractor.extract(image_resized_tensor)
-            feats['keypoints'] = feats['keypoints'].unsqueeze(0)
-            feats['descriptors'] = feats['descriptors'].unsqueeze(0)
-            feats['scores'] = feats.get('scores', torch.ones((1, feats['keypoints'].shape[1]), device=feats['keypoints'].device))
-            feats = rbd(feats)
+        multi_feats = []
+        rotations = [0, 90, 180, 270]
+
+        cv2_rots = [None, cv2.ROTATE_90_CLOCKWISE, cv2.ROTATE_180, cv2.ROTATE_90_COUNTERCLOCKWISE]
+
+        for rot_deg, cv2_rot in zip(rotations, cv2_rots):
+            # Rotate image
+            if cv2_rot is not None:
+                img_rot = cv2.rotate(image_resized, cv2_rot)
+            else:
+                img_rot = image_resized
+
+            img_tensor = transforms.ToTensor()(img_rot).to(config["device"]).unsqueeze(0)
+
+            with torch.no_grad():
+                feats = self.extractor.extract(img_tensor)
+
+                # --- IMPORTANT: Map keypoints back to 0-degree coordinate system ---
+                # Keypoints are currently in the rotated frame (W_rot, H_rot)
+                # We move them back to (fixed_width, fixed_height)
+                kpts = feats['keypoints'] # Tensor [N, 2]
+                fw, fh = config["fixed_width"], config["fixed_height"]
+
+                if rot_deg == 90:
+                    # (x, y) -> (y, fw - x)
+                    new_x = kpts[:, 1]
+                    new_y = fw - kpts[:, 0]
+                    kpts = torch.stack([new_x, new_y], dim=-1)
+                elif rot_deg == 180:
+                    # (x, y) -> (fw - x, fh - y)
+                    kpts = torch.stack([fw - kpts[:, 0], fh - kpts[:, 1]], dim=-1)
+                elif rot_deg == 270:
+                    # (x, y) -> (fh - y, x)
+                    new_x = fh - kpts[:, 1]
+                    new_y = kpts[:, 0]
+                    kpts = torch.stack([new_x, new_y], dim=-1)
+                
+                multi_feats.append(feats)
+
+        # with torch.no_grad():
+        #     feats = self.extractor.extract(image_resized_tensor)
+        #     feats['keypoints'] = feats['keypoints'].unsqueeze(0)
+        #     feats['descriptors'] = feats['descriptors'].unsqueeze(0)
+        #     feats['scores'] = feats.get('scores', torch.ones((1, feats['keypoints'].shape[1]), device=feats['keypoints'].device))
+        #     feats = rbd(feats)
             # if 'scores' not in feats:
             #     # Create a tensor of ones with the same length as keypoints
             #     num_kpts = feats['keypoints'].shape[0]
@@ -576,40 +615,56 @@ class StitchingNode(Node):
             #         feats[key] = feats[key][indices]
 
 
-        del image_resized_tensor, image_resized
+        # del image_resized_tensor, image_resized
+        del img_tensor
 
-        kpts = feats['keypoints'].cpu().numpy()
+#         kpts = feats['keypoints'].cpu().numpy()
+# 
+#         if kpts.ndim == 3:
+#             kpts = kpts[0]
+# 
+#         
+#         scale_x, scale_y = w_cropped / config["fixed_width"], h_cropped / config["fixed_height"]
+#         vis_image = image_cropped.copy()
+# 
+#         print(f"Extracted {len(kpts)} features from {path}")
+#         print(f"kpts shape: {kpts.shape}")
+#         print(f"kpts : {kpts}")
+# 
+#         for i in range(len(kpts)):
+#             # .item() ensures we have a standard Python float
+#             raw_x = float(kpts[i, 0])
+#             raw_y = float(kpts[i, 1])
+#             
+#             px = int(round(raw_x * scale_x))
+#             py = int(round(raw_y * scale_y))
+#             
+#             cv2.circle(vis_image, (px, py), 3, (0, 0, 255), -1)
+# 
+#         # Save the result
+#         filename = os.path.basename(path)
+#         save_path = os.path.join(self.config['output_dir'], self.config['output_filename']) + f"{filename}"
+#         cv2.imwrite(save_path, vis_image)
+#         self.image_stitch_paths.append(save_path)
 
-        if kpts.ndim == 3:
-            kpts = kpts[0]
-
-        
-        scale_x, scale_y = w_cropped / config["fixed_width"], h_cropped / config["fixed_height"]
         vis_image = image_cropped.copy()
+        kpts_0 = multi_feats[0]['keypoints'][0].cpu().numpy()
+        scale_x, scale_y = w_cropped / config["fixed_width"], h_cropped / config["fixed_height"]
 
-        print(f"Extracted {len(kpts)} features from {path}")
-        print(f"kpts shape: {kpts.shape}")
-        print(f"kpts : {kpts}")
-
-        for i in range(len(kpts)):
-            # .item() ensures we have a standard Python float
-            raw_x = float(kpts[i, 0])
-            raw_y = float(kpts[i, 1])
-            
-            px = int(round(raw_x * scale_x))
-            py = int(round(raw_y * scale_y))
-            
+        for kp in kpts_0:
+            px = int(round(kp[0] * scale_x))
+            py = int(round(kp[1] * scale_y))
             cv2.circle(vis_image, (px, py), 3, (0, 0, 255), -1)
 
-        # Save the result
         filename = os.path.basename(path)
-        save_path = os.path.join(self.config['output_dir'], self.config['output_filename']) + f"{filename}"
+        save_path = os.path.join(self.config['output_dir'], self.config['output_filename']) + filename
         cv2.imwrite(save_path, vis_image)
         self.image_stitch_paths.append(save_path)
 
-        print(f"Saved {len(kpts)} marked images.")
+        print(f"Extracted {len(kpts_0)} features from {path}")
 
-        return (h_cropped, w_cropped), feats
+        # return (h_cropped, w_cropped), feats
+        return (h_cropped, w_cropped), multi_feats
 
     def tensor_to_image(self, tensor):
         """Convert a PyTorch tensor to a NumPy image."""
@@ -620,7 +675,7 @@ class StitchingNode(Node):
 
 
     def match_keypoints(self, feats_list, original_sizes, config):
-        """Match keypoints between consecutive images and estimate transformations."""
+        """Iterate through 4 rotated feature sets to find the best geometric match."""
         print(f"Matching keypoints for {len(feats_list)} images...")
         
         # Define matching network
@@ -632,92 +687,131 @@ class StitchingNode(Node):
         corners0 = np.array([[0, 0], [0, h0], [w0, h0], [w0, 0]], dtype=np.float32)
         all_corners = [corners0]
 
-        total_matches = len(feats_list) - 1
-        match_count = 0
-
         for i in range(1, len(feats_list)):
-            match_count += 1
-            print(f"Matching keypoints between image {i - 1} and image {i} ({match_count}/{total_matches})")
-            feats0, feats1 = feats_list[i - 1], feats_list[i]
-            matches_input = {"image0": feats0, "image1": feats1}
-            matches01 = matcher(matches_input)
-            matches01_rbd = rbd(matches01)
-            # print('matches01', matches01)
-
-            kpts0 = feats0["keypoints"].squeeze(0)
-            kpts1 = feats1["keypoints"].squeeze(0)
-            matches = matches01_rbd["matches0"].squeeze(0)
-
-            # Filter valid matches
-            valid_matches = matches > -1
-            m_kpts0 = kpts0[valid_matches]
-            m_kpts1 = kpts1[matches[valid_matches]]
-
-            # Scale keypoints back to original image dimensions
-            h_resized, w_resized = config["fixed_height"], config["fixed_width"]
-            h0_orig, w0_orig = original_sizes[i - 1]
-            hi_orig, wi_orig = original_sizes[i]
-
-            scale_x0 = w0_orig / w_resized
-            scale_y0 = h0_orig / h_resized
-            scale_xi = wi_orig / w_resized
-            scale_yi = hi_orig / h_resized
-
-            m_kpts0_orig = m_kpts0.clone()
-            m_kpts0_orig[:, 0] *= scale_x0
-            m_kpts0_orig[:, 1] *= scale_y0
-
-            m_kpts1_orig = m_kpts1.clone()
-            m_kpts1_orig[:, 0] *= scale_xi
-            m_kpts1_orig[:, 1] *= scale_yi
-
-            image_cv = cv2.imread(self.image_stitch_paths[i])
-
-            h, w = image_cv.shape[:2]
-
-            scale_x, scale_y = w / config["fixed_width"], h / config["fixed_height"]
-            vis_image = image_cv.copy()
+            print(f"Matching pair {i-1} to {i}")
             
-            print(f"Matching image: {self.image_stitch_paths[i]}")
-            if vis_image is None:
-                print(f"Error loading image {self.image_stitch_paths[i]}")
-                return None, None
+            # We always match against the 0-degree features of the PREVIOUS image
+            feats0 = feats_list[i - 1][0] 
+            
+            best_H = None
+            best_inliers_count = -1
+            best_m_kpts1_orig = None
+            best_rot_idx = 0
 
-            for j in range(len(m_kpts1)):
-                # .item() ensures we have a standard Python float
-                raw_x = float(m_kpts1[j, 0])
-                raw_y = float(m_kpts1[j, 1])
+            print(f"--- Debug 1 ---")
+
+            # Try matching all 4 rotations of the CURRENT image
+            for rot_idx in range(4):
+                print(f"--- Debug 2 {rot_idx} ---")
+                feats1 = feats_list[i][rot_idx]
+
                 
-                px = int(round(raw_x * scale_x))
-                py = int(round(raw_y * scale_y))
                 
-                cv2.circle(vis_image, (px, py), 3, (0, 255, 0), -1)
+                # 1. Match features
+                print(f"--- Debug 2.1.0 {rot_idx} ---")
+                matches01 = matcher({"image0": feats0, "image1": feats1})
 
-            filename = os.path.basename(self.image_paths[i])
-            save_path = os.path.join(self.config['output_dir'], self.config['output_filename']) + f"{filename}"
-            cv2.imwrite(save_path, vis_image)
+                print(f"--- Debug 2.1.2 {rot_idx} ---")
+                matches01_rbd = rbd(matches01)
 
-            m_kpts0_np = m_kpts0_orig.cpu().numpy()
-            m_kpts1_np = m_kpts1_orig.cpu().numpy()
+                print(f"--- Debug 2.2 {rot_idx} ---")
+                f0_rbd = rbd(feats0)
+                f1_rbd = rbd(feats1)
+                matches = matches01_rbd["matches0"]
 
-            if len(m_kpts0_np) >= 3:
-                ransacThreshold = 2.0 # / self.iteration
-                H_affine, inliers = cv2.estimateAffinePartial2D(m_kpts1_np, m_kpts0_np, method=cv2.RANSAC, maxIters=5000, confidence=0.999, ransacReprojThreshold=ransacThreshold) #can also be 'LMEDS'
-                if H_affine is not None:
-                    H = np.vstack([H_affine, [0, 0, 1]])
-                    accumulated_H = accumulated_H @ H
-                    transformations.append(accumulated_H.copy())
+                # 2. Filter valid matches
+                print(f"--- Debug 2.3 {rot_idx} ---")
+                valid = matches > -1
+                if valid.sum() < 3: continue
+                m_kpts0 = f0_rbd["keypoints"][valid]
+                m_kpts1 = f1_rbd["keypoints"][matches[valid]]
 
-                    hi, wi = original_sizes[i]
-                    corners_i = np.array([[0, 0], [0, hi], [wi, hi], [wi, 0]], dtype=np.float32)
-                    rotation_translation = accumulated_H[:2, :]
-                    corners_i_transformed = cv2.transform(corners_i.reshape(-1, 1, 2), rotation_translation)
-                    all_corners.append(corners_i_transformed.reshape(-1, 2))
-                    print(f"Transformation found between image {i - 1} and image {i}. RansacThreshold: {ransacThreshold}")
+                if len(m_kpts0) < 3:
+                    continue
+                
+
+                print(f"--- Debug 3 {rot_idx} ---")
+                # 3. Scale back to original image dimensions
+                h_resized, w_resized = config["fixed_height"], config["fixed_width"]
+                h0_orig, w0_orig = original_sizes[i - 1]
+                hi_orig, wi_orig = original_sizes[i]
+
+                m_kpts0_orig = m_kpts0.clone()
+                m_kpts0_orig[:, 0] *= (w0_orig / w_resized)
+                m_kpts0_orig[:, 1] *= (h0_orig / h_resized)
+
+                m_kpts1_orig = m_kpts1.clone()
+                m_kpts1_orig[:, 0] *= (wi_orig / w_resized)
+                m_kpts1_orig[:, 1] *= (hi_orig / h_resized)
+
+                print(f"--- Debug 4 {rot_idx} ---")
+
+                # 4. Estimate transformation (RANSAC)
+                m_kpts0_np = m_kpts0_orig.cpu().numpy()
+                m_kpts1_np = m_kpts1_orig.cpu().numpy()
+
+                retval = cv2.estimateAffinePartial2D(
+                    m_kpts1_np, m_kpts0_np, 
+                    method=cv2.RANSAC, 
+                    maxIters=5000, 
+                    confidence=0.999, 
+                    ransacReprojThreshold=2.0
+                )
+
+                if retval is not None:
+                    H_affine, inliers = retval
+                    num_inliers = np.sum(inliers)
+                    if H_affine is not None:
+                        num_inliers = np.sum(inliers)
+                        if num_inliers > best_inliers_count:
+                            best_inliers_count = num_inliers
+                            best_H = np.vstack([H_affine, [0, 0, 1]])
+                            best_m_kpts1_orig = m_kpts1_orig # For visualization
+                            best_rot_idx = rot_idx
+                    else:
+                        print("H_affine does not exist")
                 else:
-                    print(f"Transformation failed between image {i-1} and image {i}.")
+                    print("Something went wrong unpacing estimateAffinePartial2D")
+
+            # --- Post-search: Process the winning rotation ---
+            print(f"--- Debug 5 ---")
+            if best_H is not None:
+                accumulated_H = accumulated_H @ best_H
+                transformations.append(accumulated_H.copy())
+                
+                print(f"Match found! Rot index: {best_rot_idx} (Inliers: {best_inliers_count})")
+
+                # Update corners for bounding box
+                hi, wi = original_sizes[i]
+                corners_i = np.array([[0, 0], [0, hi], [wi, hi], [wi, 0]], dtype=np.float32)
+                # Use perspectiveTransform for 3x3 matrices
+                corners_i_transformed = cv2.perspectiveTransform(corners_i.reshape(-1, 1, 2), accumulated_H)
+                all_corners.append(corners_i_transformed.reshape(-1, 2))
+
+                # Visualization: Draw only the BEST matching features on the image
+                image_cv = cv2.imread(self.image_stitch_paths[i])
+                if image_cv is not None:
+                    h_img, w_img = image_cv.shape[:2]
+                    # Scale factors from original size to current visualization image size
+                    # Note: if image_stitch_paths[i] is already cropped/original size, 
+                    # use the ratio of image_cv size to original_sizes[i]
+                    orig_h, orig_w = original_sizes[i]
+                    scale_draw_x = w_img / orig_w
+                    scale_draw_y = h_img / orig_h
+
+                    for j in range(len(best_m_kpts1_orig)):
+                        px = int(round(float(best_m_kpts1_orig[j, 0]) * scale_draw_x))
+                        py = int(round(float(best_m_kpts1_orig[j, 1]) * scale_draw_y))
+                        # Draw green dot for matches
+                        cv2.circle(image_cv, (px, py), 4, (0, 255, 0), -1)
+
+                    filename = os.path.basename(self.image_paths[i])
+                    save_path = os.path.join(config['output_dir'], f"match_{best_rot_idx}_{filename}")
+                    cv2.imwrite(save_path, image_cv)
             else:
-                print(f"Not enough matches between image {i-1} and image {i}.")
+                print(f"CRITICAL: No rotation could match image {i} to {i-1}")
+                # Append identity or last known H to maintain list length
+                transformations.append(accumulated_H.copy())
 
         return transformations, all_corners
 
