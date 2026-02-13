@@ -698,29 +698,20 @@ class StitchingNode(Node):
             best_m_kpts1_orig = None
             best_rot_idx = 0
 
-            print(f"--- Debug 1 ---")
-
             # Try matching all 4 rotations of the CURRENT image
             for rot_idx in range(4):
-                print(f"--- Debug 2 {rot_idx} ---")
                 feats1 = feats_list[i][rot_idx]
 
-                
-                
                 # 1. Match features
-                print(f"--- Debug 2.1.0 {rot_idx} ---")
                 matches01 = matcher({"image0": feats0, "image1": feats1})
 
-                print(f"--- Debug 2.1.2 {rot_idx} ---")
                 matches01_rbd = rbd(matches01)
 
-                print(f"--- Debug 2.2 {rot_idx} ---")
                 f0_rbd = rbd(feats0)
                 f1_rbd = rbd(feats1)
                 matches = matches01_rbd["matches0"]
 
                 # 2. Filter valid matches
-                print(f"--- Debug 2.3 {rot_idx} ---")
                 valid = matches > -1
                 if valid.sum() < 3: continue
                 m_kpts0 = f0_rbd["keypoints"][valid]
@@ -730,7 +721,6 @@ class StitchingNode(Node):
                     continue
                 
 
-                print(f"--- Debug 3 {rot_idx} ---")
                 # 3. Scale back to original image dimensions
                 h_resized, w_resized = config["fixed_height"], config["fixed_width"]
                 h0_orig, w0_orig = original_sizes[i - 1]
@@ -744,7 +734,6 @@ class StitchingNode(Node):
                 m_kpts1_orig[:, 0] *= (wi_orig / w_resized)
                 m_kpts1_orig[:, 1] *= (hi_orig / h_resized)
 
-                print(f"--- Debug 4 {rot_idx} ---")
 
                 # 4. Estimate transformation (RANSAC)
                 m_kpts0_np = m_kpts0_orig.cpu().numpy()
@@ -760,10 +749,11 @@ class StitchingNode(Node):
 
                 if retval is not None:
                     H_affine, inliers = retval
-                    num_inliers = np.sum(inliers)
                     if H_affine is not None:
                         num_inliers = np.sum(inliers)
+                        print(f"{num_inliers} at orientation of {rot_idx * 90}")
                         if num_inliers > best_inliers_count:
+                            print(f"Updating best H with {rot_idx * 90}")
                             best_inliers_count = num_inliers
                             best_H = np.vstack([H_affine, [0, 0, 1]])
                             best_m_kpts1_orig = m_kpts1_orig # For visualization
@@ -776,13 +766,54 @@ class StitchingNode(Node):
             # --- Post-search: Process the winning rotation ---
             print(f"--- Debug 5 ---")
             if best_H is not None:
-                accumulated_H = accumulated_H @ best_H
-                transformations.append(accumulated_H.copy())
+                # accumulated_H = accumulated_H @ best_H
+                # transformations.append(accumulated_H.copy())
                 
-                print(f"Match found! Rot index: {best_rot_idx} (Inliers: {best_inliers_count})")
+                print(f"Match found! Rotation of : {best_rot_idx * 90} (Inliers: {best_inliers_count})")
+
+                fw, fh = config["fixed_width"], config["fixed_height"]
+                R_matrix = np.eye(3)
+                if best_rot_idx == 1: # 90 deg clockwise
+                    # (x, y) -> (y, fw - x)
+                    R_matrix = np.array([[0, 1, 0], 
+                                         [-1, 0, fw], 
+                                         [0, 0, 1]], dtype=np.float32)
+                elif best_rot_idx == 2: # 180 deg
+                    # (x, y) -> (fw - x, fh - y)
+                    R_matrix = np.array([[-1, 0, fw], 
+                                         [0, -1, fh], 
+                                         [0, 0, 1]], dtype=np.float32)
+                elif best_rot_idx == 3: # 270 deg (90 CCW)
+                    # (x, y) -> (fh - y, x)
+                    R_matrix = np.array([[0, -1, fh], 
+                                         [1, 0, 0], 
+                                         [0, 0, 1]], dtype=np.float32)
+
+                orig_h, orig_w = original_sizes[i]
+                scale_to_fixed = np.array([[fw/orig_w, 0, 0], 
+                                           [0, fh/orig_h, 0], 
+                                           [0, 0, 1]])
+                scale_to_orig = np.array([[orig_w/fw, 0, 0], 
+                                          [0, orig_h/fh, 0], 
+                                          [0, 0, 1]])
+                
+                # The "Corrected" rotation for full-res pixels
+                R_full_res = scale_to_orig @ R_matrix @ scale_to_fixed
+
+                # Combine: New H = best_H @ R_full_res
+                # This allows the warper to use the 0-degree original image
+                best_H_corrected = best_H @ R_full_res
+
+                # Chain to global accumulated matrix
+                accumulated_H = accumulated_H @ best_H_corrected
+                transformations.append(accumulated_H.copy())
+
+
+                hi, wi = original_sizes[i]
+                S = np.array([[wi/fw, 0, 0], [0, hi/fh, 0], [0, 0, 1]])
+                S_inv = np.linalg.inv(S)
 
                 # Update corners for bounding box
-                hi, wi = original_sizes[i]
                 corners_i = np.array([[0, 0], [0, hi], [wi, hi], [wi, 0]], dtype=np.float32)
                 # Use perspectiveTransform for 3x3 matrices
                 corners_i_transformed = cv2.perspectiveTransform(corners_i.reshape(-1, 1, 2), accumulated_H)
