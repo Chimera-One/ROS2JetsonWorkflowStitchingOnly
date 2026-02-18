@@ -28,6 +28,10 @@ extern "C"
 typedef struct custom_interfaces__msg__StitchedData
 {
   double rotation_degree;
+  double latitude;
+  double longitude;
+  double altitude;
+  int64_t numberofimages;
   /// existing ROS message
   sensor_msgs__msg__Image image;
 } custom_interfaces__msg__StitchedData;

@@ -37,16 +37,80 @@ private:
   ::custom_interfaces::msg::StitchedData msg_;
 };
 
+class Init_StitchedData_numberofimages
+{
+public:
+  explicit Init_StitchedData_numberofimages(::custom_interfaces::msg::StitchedData & msg)
+  : msg_(msg)
+  {}
+  Init_StitchedData_image numberofimages(::custom_interfaces::msg::StitchedData::_numberofimages_type arg)
+  {
+    msg_.numberofimages = std::move(arg);
+    return Init_StitchedData_image(msg_);
+  }
+
+private:
+  ::custom_interfaces::msg::StitchedData msg_;
+};
+
+class Init_StitchedData_altitude
+{
+public:
+  explicit Init_StitchedData_altitude(::custom_interfaces::msg::StitchedData & msg)
+  : msg_(msg)
+  {}
+  Init_StitchedData_numberofimages altitude(::custom_interfaces::msg::StitchedData::_altitude_type arg)
+  {
+    msg_.altitude = std::move(arg);
+    return Init_StitchedData_numberofimages(msg_);
+  }
+
+private:
+  ::custom_interfaces::msg::StitchedData msg_;
+};
+
+class Init_StitchedData_longitude
+{
+public:
+  explicit Init_StitchedData_longitude(::custom_interfaces::msg::StitchedData & msg)
+  : msg_(msg)
+  {}
+  Init_StitchedData_altitude longitude(::custom_interfaces::msg::StitchedData::_longitude_type arg)
+  {
+    msg_.longitude = std::move(arg);
+    return Init_StitchedData_altitude(msg_);
+  }
+
+private:
+  ::custom_interfaces::msg::StitchedData msg_;
+};
+
+class Init_StitchedData_latitude
+{
+public:
+  explicit Init_StitchedData_latitude(::custom_interfaces::msg::StitchedData & msg)
+  : msg_(msg)
+  {}
+  Init_StitchedData_longitude latitude(::custom_interfaces::msg::StitchedData::_latitude_type arg)
+  {
+    msg_.latitude = std::move(arg);
+    return Init_StitchedData_longitude(msg_);
+  }
+
+private:
+  ::custom_interfaces::msg::StitchedData msg_;
+};
+
 class Init_StitchedData_rotation_degree
 {
 public:
   Init_StitchedData_rotation_degree()
   : msg_(::rosidl_runtime_cpp::MessageInitialization::SKIP)
   {}
-  Init_StitchedData_image rotation_degree(::custom_interfaces::msg::StitchedData::_rotation_degree_type arg)
+  Init_StitchedData_latitude rotation_degree(::custom_interfaces::msg::StitchedData::_rotation_degree_type arg)
   {
     msg_.rotation_degree = std::move(arg);
-    return Init_StitchedData_image(msg_);
+    return Init_StitchedData_latitude(msg_);
   }
 
 private:

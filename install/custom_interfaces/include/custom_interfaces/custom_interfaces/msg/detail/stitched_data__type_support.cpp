@@ -37,7 +37,7 @@ void StitchedData_fini_function(void * message_memory)
   typed_message->~StitchedData();
 }
 
-static const ::rosidl_typesupport_introspection_cpp::MessageMember StitchedData_message_member_array[2] = {
+static const ::rosidl_typesupport_introspection_cpp::MessageMember StitchedData_message_member_array[6] = {
   {
     "rotation_degree",  // name
     ::rosidl_typesupport_introspection_cpp::ROS_TYPE_DOUBLE,  // type
@@ -47,6 +47,74 @@ static const ::rosidl_typesupport_introspection_cpp::MessageMember StitchedData_
     0,  // array size
     false,  // is upper bound
     offsetof(custom_interfaces::msg::StitchedData, rotation_degree),  // bytes offset in struct
+    nullptr,  // default value
+    nullptr,  // size() function pointer
+    nullptr,  // get_const(index) function pointer
+    nullptr,  // get(index) function pointer
+    nullptr,  // fetch(index, &value) function pointer
+    nullptr,  // assign(index, value) function pointer
+    nullptr  // resize(index) function pointer
+  },
+  {
+    "latitude",  // name
+    ::rosidl_typesupport_introspection_cpp::ROS_TYPE_DOUBLE,  // type
+    0,  // upper bound of string
+    nullptr,  // members of sub message
+    false,  // is array
+    0,  // array size
+    false,  // is upper bound
+    offsetof(custom_interfaces::msg::StitchedData, latitude),  // bytes offset in struct
+    nullptr,  // default value
+    nullptr,  // size() function pointer
+    nullptr,  // get_const(index) function pointer
+    nullptr,  // get(index) function pointer
+    nullptr,  // fetch(index, &value) function pointer
+    nullptr,  // assign(index, value) function pointer
+    nullptr  // resize(index) function pointer
+  },
+  {
+    "longitude",  // name
+    ::rosidl_typesupport_introspection_cpp::ROS_TYPE_DOUBLE,  // type
+    0,  // upper bound of string
+    nullptr,  // members of sub message
+    false,  // is array
+    0,  // array size
+    false,  // is upper bound
+    offsetof(custom_interfaces::msg::StitchedData, longitude),  // bytes offset in struct
+    nullptr,  // default value
+    nullptr,  // size() function pointer
+    nullptr,  // get_const(index) function pointer
+    nullptr,  // get(index) function pointer
+    nullptr,  // fetch(index, &value) function pointer
+    nullptr,  // assign(index, value) function pointer
+    nullptr  // resize(index) function pointer
+  },
+  {
+    "altitude",  // name
+    ::rosidl_typesupport_introspection_cpp::ROS_TYPE_DOUBLE,  // type
+    0,  // upper bound of string
+    nullptr,  // members of sub message
+    false,  // is array
+    0,  // array size
+    false,  // is upper bound
+    offsetof(custom_interfaces::msg::StitchedData, altitude),  // bytes offset in struct
+    nullptr,  // default value
+    nullptr,  // size() function pointer
+    nullptr,  // get_const(index) function pointer
+    nullptr,  // get(index) function pointer
+    nullptr,  // fetch(index, &value) function pointer
+    nullptr,  // assign(index, value) function pointer
+    nullptr  // resize(index) function pointer
+  },
+  {
+    "numberofimages",  // name
+    ::rosidl_typesupport_introspection_cpp::ROS_TYPE_INT64,  // type
+    0,  // upper bound of string
+    nullptr,  // members of sub message
+    false,  // is array
+    0,  // array size
+    false,  // is upper bound
+    offsetof(custom_interfaces::msg::StitchedData, numberofimages),  // bytes offset in struct
     nullptr,  // default value
     nullptr,  // size() function pointer
     nullptr,  // get_const(index) function pointer
@@ -77,7 +145,7 @@ static const ::rosidl_typesupport_introspection_cpp::MessageMember StitchedData_
 static const ::rosidl_typesupport_introspection_cpp::MessageMembers StitchedData_message_members = {
   "custom_interfaces::msg",  // message namespace
   "StitchedData",  // message name
-  2,  // number of fields
+  6,  // number of fields
   sizeof(custom_interfaces::msg::StitchedData),
   StitchedData_message_member_array,  // message members
   StitchedData_init_function,  // function to initialize message memory (memory has to be allocated)

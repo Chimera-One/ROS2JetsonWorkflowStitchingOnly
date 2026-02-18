@@ -77,7 +77,7 @@ class StitchingNode(Node):
         # A vector of the orientation of the mission
         self.orientation_vector = np.array([[0, 0], [0, 0]], dtype=np.float32)
         self.stitched_orientation_vector = np.array([[0, 0], [0, 0]], dtype=np.float32)
-        self.orientation_angle_between_original_images_and_stitched_images = 0.0
+        self.orientation_angle_between_original_images_and_stitched_images = []
 
         self.gps_lat = []
         self.gps_lon = []
@@ -176,21 +176,23 @@ class StitchingNode(Node):
                     self.image_stitch_paths = []
                     self.gps_lat = [data["lat"] for _, data in ordered_items]
                     self.gps_lon = [data["lon"] for _, data in ordered_items]
+                    self.gps_alt = [data["alt"] for _, data in ordered_items]
 
                     orientation_vector = np.array([[self.gps_lat[0], self.gps_lon[0], 0], [self.gps_lat[-1], self.gps_lon[-1], 0]], dtype=np.float32)
 
                     print(f"Orientation vector: {orientation_vector}")
                     print("processing bounding box...")
 
-                    bb_x_min, bb_x_max, bb_y_min, bb_y_max, stitch_orientation = self.process_bounding_box()
+                    bb_x_min, bb_x_max, bb_y_min, bb_y_max, image_origins, stitch_orientation = self.process_bounding_box()
 
                     print(f"Bounding box processed. {bb_x_max - bb_x_min}, {bb_y_max - bb_y_min} bb_x_min: {bb_x_min}, bb_x_max: {bb_x_max}, bb_y_min: {bb_y_min}, bb_y_max: {bb_y_max}")
 
-                    stitch_vec = stitch_orientation[1] - stitch_orientation[0]
-                    gps_vec = orientation_vector[1] - orientation_vector[0]
+                    # stitch_vec = stitch_orientation[1] - stitch_orientation[0]
+                    # gps_vec = orientation_vector[1] - orientation_vector[0]
 
-                    self.orientation_angle_between_original_images_and_stitched_images = _gohlketransforms.angle_between_vectors(stitch_vec, gps_vec)
-                    print(f"Rotation angle: {self.orientation_angle_between_original_images_and_stitched_images}")
+                    # rotation_angle = _gohlketransforms.angle_between_vectors(stitch_vec, gps_vec)
+                    # self.orientation_angle_between_original_images_and_stitched_images.append(rotation_angle)
+                    # print(f"Rotation angle: {rotation_angle}")
                     print("processing images...")
 
                     processed_count = 0
@@ -233,9 +235,12 @@ class StitchingNode(Node):
                     gc.collect()
                     torch.cuda.empty_cache()
 
-                    print("Matching keypoints and estimating transformations...")
-                    transformations, all_corners = self.match_keypoints(self.feats_list, self.original_sizes, self.config)
+                    print(f"Image origins: {len(image_origins)}")
 
+                    print("Matching keypoints and estimating transformations...")
+                    transformations, all_corners, gps_lat_means, gps_lon_means, gps_alt_means = self.match_keypoints(self.feats_list, self.original_sizes, self.config, image_origins)
+
+                    print(f"Lats: {gps_lat_means}\nLongs: {gps_lon_means}\nAlts: {gps_alt_means}")
                     print("Keypoints matched clear memory")
                     self.original_images.clear()
                     self.mask_images.clear()
@@ -244,58 +249,78 @@ class StitchingNode(Node):
                     del self.original_images, self.mask_images, self.heatmap_images, self.feats_list
                     gc.collect()
 
+                    print(f"Transfomations length: {len(transformations)}, all_corners length: {len(all_corners)}")
+                    print(f"gps lat means: {gps_lat_means} gps lon means: {gps_lon_means} gps alt means: {gps_alt_means}")
+
                     # panorama = self.stitch_images(self.original_images, transformations, all_corners)
-                    panorama, panorama_mask, panorama_heatmap = self.stitch_images(transformations, all_corners)
+                    panorama_list, panorama_mask_list, panorama_heatmap_list = self.stitch_images(transformations, all_corners)
                     print("Stitching Pipeline completed.")
+                    print(f"panorama_list length: {len(panorama_list)}")
 
-                    panorama_height, panorama_width = panorama.shape[:2]
-                    bb_width = int(np.ceil(bb_x_max - bb_x_min))
-                    bb_height = int(np.ceil(bb_y_max - bb_y_min))
+                    for i in range(len(panorama_list)):
 
-                    if (panorama_width <= bb_width and panorama_height <= bb_height) or (panorama_height <= bb_width and panorama_width <= bb_height) or self.iteration >= 1:
-                        print(f"--- Panorama fits inside the bounding box. Iteration: {self.iteration}")
-                        print(f"Panorama size: ({panorama_width}, {panorama_height})")
-                        print(f"Bounding box size: ({bb_width}, {bb_height})")
-                        panorama_msg = StitchedData()
-                        panorama_msg.image = self.bridge.cv2_to_imgmsg(panorama, encoding="bgra8")
-                        panorama_msg.image.header.stamp = self.get_clock().now().to_msg()
-                        panorama_msg.image.header.frame_id = f"RGB_{self.iteration}"
-                        panorama_msg.rotation_degree = float(self.orientation_angle_between_original_images_and_stitched_images)
+                        panorama_height, panorama_width = panorama_list[i].shape[:2]
+                        bb_width = int(np.ceil(bb_x_max - bb_x_min))
+                        bb_height = int(np.ceil(bb_y_max - bb_y_min))
 
-                        self.stitched_rgb.publish(panorama_msg)
+                        if (panorama_width <= bb_width and panorama_height <= bb_height) or (panorama_height <= bb_width and panorama_width <= bb_height) or self.iteration >= 1:
+                            print(f"--- Panorama fits inside the bounding box. Iteration: {self.iteration}")
+                            print(f"Panorama size: ({panorama_width}, {panorama_height})")
+                            print(f"Bounding box size: ({bb_width}, {bb_height})")
+                            print(f"Rotation of stitched image: {self.orientation_angle_between_original_images_and_stitched_images[i]}")
+                            print(f"Lat: {gps_lat_means[i]}, Lon: {gps_lon_means[i]}, Alt: {gps_alt_means[i]}")
+                            panorama_msg = StitchedData()
+                            panorama_msg.latitude = gps_lat_means[i]
+                            panorama_msg.longitude = gps_lon_means[i]
+                            panorama_msg.altitude = gps_alt_means[i]
+                            panorama_msg.numberofimages = len(panorama_list)
+                            panorama_msg.image = self.bridge.cv2_to_imgmsg(panorama_list[i], encoding="bgra8")
+                            panorama_msg.image.header.stamp = self.get_clock().now().to_msg()
+                            panorama_msg.image.header.frame_id = f"RGB_{self.iteration}_{i}"
+                            panorama_msg.rotation_degree = float(self.orientation_angle_between_original_images_and_stitched_images[i])
 
-                        panorama_msg = StitchedData()
-                        panorama_msg.image = self.bridge.cv2_to_imgmsg(panorama_mask, encoding="bgra8")
-                        panorama_msg.image.header.stamp = self.get_clock().now().to_msg()
-                        panorama_msg.image.header.frame_id = f"MASK_{self.iteration}"
-                        panorama_msg.rotation_degree = float(self.orientation_angle_between_original_images_and_stitched_images)
-                        self.stitched_mask.publish(panorama_msg)
-                        
-                        panorama_msg = StitchedData()
-                        panorama_msg.image = self.bridge.cv2_to_imgmsg(panorama_heatmap, encoding="bgra8")
-                        panorama_msg.image.header.stamp = self.get_clock().now().to_msg()
-                        panorama_msg.image.header.frame_id = f"HEATMAP_{self.iteration}"
-                        panorama_msg.rotation_degree = float(self.orientation_angle_between_original_images_and_stitched_images)
-                        self.stitched_heatmap.publish(panorama_msg)
+                            self.stitched_rgb.publish(panorama_msg)
 
-                        cv2.imwrite(os.path.join(self.config['output_dir'], self.config['output_filename']) + str(self.iteration) + ".png", panorama)
-                        cv2.imwrite(os.path.join(self.config['output_dir'], self.config['output_filename']) + str(self.iteration) + "_mask.png", panorama_mask)
-                        cv2.imwrite(os.path.join(self.config['output_dir'], self.config['output_filename']) + str(self.iteration) + "_heatmap.png", panorama_heatmap)
+                            panorama_msg = StitchedData()
+                            panorama_msg.latitude = gps_lat_means[i]
+                            panorama_msg.longitude = gps_lon_means[i]
+                            panorama_msg.altitude = gps_alt_means[i]
+                            panorama_msg.numberofimages = len(panorama_list)
+                            panorama_msg.image = self.bridge.cv2_to_imgmsg(panorama_mask_list[i], encoding="bgra8")
+                            panorama_msg.image.header.stamp = self.get_clock().now().to_msg()
+                            panorama_msg.image.header.frame_id = f"MASK_{self.iteration}_{i}"
+                            panorama_msg.rotation_degree = float(self.orientation_angle_between_original_images_and_stitched_images[i])
+                            self.stitched_mask.publish(panorama_msg)
+                            
+                            panorama_msg = StitchedData()
+                            panorama_msg.latitude = gps_lat_means[i]
+                            panorama_msg.longitude = gps_lon_means[i]
+                            panorama_msg.altitude = gps_alt_means[i]
+                            panorama_msg.numberofimages = len(panorama_list)
+                            panorama_msg.image = self.bridge.cv2_to_imgmsg(panorama_heatmap_list[i], encoding="bgra8")
+                            panorama_msg.image.header.stamp = self.get_clock().now().to_msg()
+                            panorama_msg.image.header.frame_id = f"HEATMAP_{self.iteration}_{i}"
+                            panorama_msg.rotation_degree = float(self.orientation_angle_between_original_images_and_stitched_images[i])
+                            self.stitched_heatmap.publish(panorama_msg)
 
-                        self.is_stitch_ready = False
-                        self.is_dir_reset = False
-                    else:
-                        print(f"--- Panorama EXCEEDS the bounding box. Iteration: {self.iteration}")
-                        print(f"Panorama size: ({panorama_width}, {panorama_height})")
-                        print(f"Bounding box size: ({bb_width}, {bb_height})")
+                            cv2.imwrite(os.path.join(self.config['output_dir'], self.config['output_filename']) + str(self.iteration) + "_" + str(i) + ".png", panorama_list[i])
+                            cv2.imwrite(os.path.join(self.config['output_dir'], self.config['output_filename']) + str(self.iteration) + "_" + str(i) + "_mask.png", panorama_mask_list[i])
+                            cv2.imwrite(os.path.join(self.config['output_dir'], self.config['output_filename']) + str(self.iteration) + "_" + str(i) + "_heatmap.png", panorama_heatmap_list[i])
 
-                        cv2.imwrite(os.path.join(self.config['output_dir'], self.config['output_filename']) + str(self.iteration) + ".png", panorama)
-                        cv2.imwrite(os.path.join(self.config['output_dir'], self.config['output_filename']) + str(self.iteration) + "_mask.png", panorama_mask)
-                        cv2.imwrite(os.path.join(self.config['output_dir'], self.config['output_filename']) + str(self.iteration) + "_heatmap.png", panorama_heatmap)
+                            self.is_stitch_ready = False
+                            self.is_dir_reset = False
+                        else:
+                            print(f"--- Panorama EXCEEDS the bounding box. Iteration: {self.iteration}")
+                            print(f"Panorama size: ({panorama_width}, {panorama_height})")
+                            print(f"Bounding box size: ({bb_width}, {bb_height})")
 
-                        self.iteration = self.iteration + 1
+                            cv2.imwrite(os.path.join(self.config['output_dir'], self.config['output_filename']) + str(self.iteration) + "_" + str(i) + ".png", panorama_list[i])
+                            cv2.imwrite(os.path.join(self.config['output_dir'], self.config['output_filename']) + str(self.iteration) + "_" + str(i) + "_mask.png", panorama_mask_list[i])
+                            cv2.imwrite(os.path.join(self.config['output_dir'], self.config['output_filename']) + str(self.iteration) + "_" + str(i) + "_heatmap.png", panorama_heatmap_list[i])
 
+                            self.iteration = self.iteration + 1
 
+                    self.orientation_angle_between_original_images_and_stitched_images = []
 
 #                     panorama_msg = self.bridge.cv2_to_imgmsg(panorama, encoding="bgr8")
 #                     panorama_msg.header.stamp = self.get_clock().now().to_msg()
@@ -429,6 +454,7 @@ class StitchingNode(Node):
         previous_image_size = None
         previous_image_origin = None
         stitch_orientation = np.array([[0, 0, 0], [0, 0, 0]], dtype=np.float32)
+        image_origins = []
 
         all_corners = []
 
@@ -462,6 +488,7 @@ class StitchingNode(Node):
                     [ w/2, -h/2]
                 ], dtype=np.float32) + previous_image_origin
                 all_corners.append(corners)
+                image_origins.append(np.array([0, 0, 0], dtype=np.float32))
                 continue
             
             # Equirectangular approximation
@@ -476,16 +503,33 @@ class StitchingNode(Node):
             x_px = dx * f_px / previous_gps[2]  # scale by previous altitude
             y_px = dy * f_px / previous_gps[2]
 
+            self.get_logger().info(f"Debug 0")
+
             # Vector math
             expected_vector = np.array([x_px, y_px]) # in pixel coordinate
             stitch_orientation[1][0] = stitch_orientation[1][0] + expected_vector[0]
             stitch_orientation[1][1] = stitch_orientation[1][1] + expected_vector[1]
+            self.get_logger().info(f"Debug 1")
             expected_scale = current_gps[2] / previous_gps[2]
+
+            self.get_logger().info(f"Debug 2")
 
             # Compute origin and scale
             current_image_origin = previous_image_origin + expected_vector
+            self.get_logger().info(f"Debug 3")
+            current_image_origin_3d = np.array([
+                previous_image_origin[0] + expected_vector[0],
+                previous_image_origin[1] + expected_vector[1],
+                0 # Or use a scaled altitude difference if needed
+            ], dtype=np.float32)
+            self.get_logger().info(f"Debug 4")
+            image_origins.append(current_image_origin_3d)
+            self.get_logger().info(f"Debug 5")
             current_image_size = previous_image_size * expected_scale
+            self.get_logger().info(f"Debug 6")
             w_resized, h_resized = current_image_size
+
+            self.get_logger().info(f"Debug 7")
 
             # Compute corners centered at origin
             current_corners = np.array([
@@ -521,7 +565,7 @@ class StitchingNode(Node):
 
         self.get_logger().info(f"Bounding box: x[{min_x}, {max_x}], y[{min_y}, {max_y}]")
 
-        return min_x, max_x, min_y, max_y, stitch_orientation #, all_corners
+        return min_x, max_x, min_y, max_y, image_origins, stitch_orientation #, all_corners
             
 
     def process_image(self, path, config):
@@ -674,7 +718,7 @@ class StitchingNode(Node):
 
 
 
-    def match_keypoints(self, feats_list, original_sizes, config):
+    def match_keypoints(self, feats_list, original_sizes, config, image_origins):
         """Iterate through 4 rotated feature sets to find the best geometric match."""
         print(f"Matching keypoints for {len(feats_list)} images...")
         
@@ -682,10 +726,21 @@ class StitchingNode(Node):
         matcher = LightGlue(features=config['extractor']).eval().to(config["device"])
 
         accumulated_H = np.eye(3)
+        transformations_list = []
         transformations = [accumulated_H.copy()]
         h0, w0 = original_sizes[0]
         corners0 = np.array([[0, 0], [0, h0], [w0, h0], [w0, 0]], dtype=np.float32)
+        all_corners_list = []
         all_corners = [corners0]
+
+        gps_lon_sum = []
+        gps_lat_sum = []
+        gps_alt_sum = []
+        gps_lon_mean = []
+        gps_lat_mean = []
+        gps_alt_mean = []
+
+        index_of_beginning_of_row = 0
 
         for i in range(1, len(feats_list)):
             print(f"Matching pair {i-1} to {i}")
@@ -773,51 +828,225 @@ class StitchingNode(Node):
 
                 fw, fh = config["fixed_width"], config["fixed_height"]
                 R_matrix = np.eye(3)
-                if best_rot_idx == 1: # 90 deg clockwise
+                if best_rot_idx == 0:
+                    R_matrix = np.eye(3)
+
+                    orig_h, orig_w = original_sizes[i]
+                    scale_to_fixed = np.array([[fw/orig_w, 0, 0], 
+                                            [0, fh/orig_h, 0], 
+                                            [0, 0, 1]])
+                    scale_to_orig = np.array([[orig_w/fw, 0, 0], 
+                                            [0, orig_h/fh, 0], 
+                                            [0, 0, 1]])
+                    
+                    gps_lat_sum.append(self.gps_lat[i])
+                    gps_lon_sum.append(self.gps_lon[i])
+                    gps_alt_sum.append(self.gps_alt[i])
+                    
+                    # The "Corrected" rotation for full-res pixels
+                    R_full_res = scale_to_orig @ R_matrix @ scale_to_fixed
+
+                    # Combine: New H = best_H @ R_full_res
+                    # This allows the warper to use the 0-degree original image
+                    best_H_corrected = best_H @ R_full_res
+
+                    # Chain to global accumulated matrix
+                    accumulated_H = accumulated_H @ best_H_corrected
+                    transformations.append(accumulated_H.copy())
+
+                    hi, wi = original_sizes[i]
+                    S = np.array([[wi/fw, 0, 0], [0, hi/fh, 0], [0, 0, 1]])
+                    S_inv = np.linalg.inv(S)
+
+                    # Update corners for bounding box
+                    corners_i = np.array([[0, 0], [0, hi], [wi, hi], [wi, 0]], dtype=np.float32)
+                    # Use perspectiveTransform for 3x3 matrices
+                    corners_i_transformed = cv2.perspectiveTransform(corners_i.reshape(-1, 1, 2), accumulated_H)
+                    all_corners.append(corners_i_transformed.reshape(-1, 2))
+
+                    if i == len(feats_list) - 1:
+                        # Last row finished. Save all the transformations in the past
+                        print(f"Debug last {i}")
+                        print(f"Index of beginning of row {index_of_beginning_of_row}")
+                        transformations_list.append(transformations)
+                        transformations = []
+                        all_corners_list.append(all_corners)
+                        all_corners = []
+                        gps_lat_mean.append(sum(gps_lat_sum)/len(gps_lat_sum))
+                        gps_lon_mean.append(sum(gps_lon_sum)/len(gps_lon_sum))
+                        gps_alt_mean.append(sum(gps_alt_sum)/len(gps_alt_sum))
+                        print("Debug 0")
+
+                        orientation_vector = np.array([[self.gps_lat[index_of_beginning_of_row], self.gps_lon[index_of_beginning_of_row], 0], [self.gps_lat[i], self.gps_lon[i], 0]], dtype=np.float32)
+                        print("Debug 1")
+                        gps_vec = orientation_vector[1] - orientation_vector[0]
+                        print("Debug 2")
+
+                        stitch_vec = image_origins[i] - image_origins[index_of_beginning_of_row]
+                        print("Debug 3")
+
+                        rotation_angle = _gohlketransforms.angle_between_vectors(stitch_vec, gps_vec)
+                        print("Debug 4")
+                        self.orientation_angle_between_original_images_and_stitched_images.append(rotation_angle)
+
+                        index_of_beginning_of_row = 0
+
+                elif best_rot_idx == 1: # 90 deg clockwise
                     # (x, y) -> (y, fw - x)
                     R_matrix = np.array([[0, 1, 0], 
                                          [-1, 0, fw], 
                                          [0, 0, 1]], dtype=np.float32)
+                    
+                    orig_h, orig_w = original_sizes[i]
+                    scale_to_fixed = np.array([[fw/orig_w, 0, 0], 
+                                            [0, fh/orig_h, 0], 
+                                            [0, 0, 1]])
+                    scale_to_orig = np.array([[orig_w/fw, 0, 0], 
+                                            [0, orig_h/fh, 0], 
+                                            [0, 0, 1]])
+                    
+                    gps_lat_sum.append(self.gps_lat[i])
+                    gps_lon_sum.append(self.gps_lon[i])
+                    gps_alt_sum.append(self.gps_alt[i])
+                    
+                    # The "Corrected" rotation for full-res pixels
+                    R_full_res = scale_to_orig @ R_matrix @ scale_to_fixed
+
+                    # Combine: New H = best_H @ R_full_res
+                    # This allows the warper to use the 0-degree original image
+                    best_H_corrected = best_H @ R_full_res
+
+                    # New row started. Save all the transformations in the past
+                    transformations_list.append(transformations)
+                    transformations = []
+                    accumulated_H = np.eye(3)
+                    all_corners_list.append(all_corners)
+                    all_corners = []
+                    gps_lat_mean.append(sum(gps_lat_sum)/len(gps_lat_sum))
+                    gps_lon_mean.append(sum(gps_lon_sum)/len(gps_lon_sum))
+                    gps_alt_mean.append(sum(gps_alt_sum)/len(gps_alt_sum))
+
+                    # Chain to global accumulated matrix
+                    accumulated_H = accumulated_H @ best_H_corrected
+                    transformations.append(accumulated_H.copy())
+
+                    hi, wi = original_sizes[i]
+                    S = np.array([[wi/fw, 0, 0], [0, hi/fh, 0], [0, 0, 1]])
+                    S_inv = np.linalg.inv(S)
+
+                    # Update corners for bounding box
+                    corners_i = np.array([[0, 0], [0, hi], [wi, hi], [wi, 0]], dtype=np.float32)
+                    # Use perspectiveTransform for 3x3 matrices
+                    corners_i_transformed = cv2.perspectiveTransform(corners_i.reshape(-1, 1, 2), accumulated_H)
+                    all_corners.append(corners_i_transformed.reshape(-1, 2))
+
+                    orientation_vector = np.array([[self.gps_lat[index_of_beginning_of_row], self.gps_lon[index_of_beginning_of_row], 0], [self.gps_lat[i], self.gps_lon[i], 0]], dtype=np.float32)
+                    gps_vec = orientation_vector[1] - orientation_vector[0]
+
+                    stitch_vec = image_origins[i] - image_origins[index_of_beginning_of_row]
+
+                    rotation_angle = _gohlketransforms.angle_between_vectors(stitch_vec, gps_vec)
+                    self.orientation_angle_between_original_images_and_stitched_images.append(rotation_angle)
+
+                    index_of_beginning_of_row = i
+
                 elif best_rot_idx == 2: # 180 deg
                     # (x, y) -> (fw - x, fh - y)
                     R_matrix = np.array([[-1, 0, fw], 
                                          [0, -1, fh], 
                                          [0, 0, 1]], dtype=np.float32)
+                    
+                    orig_h, orig_w = original_sizes[i]
+                    scale_to_fixed = np.array([[fw/orig_w, 0, 0], 
+                                            [0, fh/orig_h, 0], 
+                                            [0, 0, 1]])
+                    scale_to_orig = np.array([[orig_w/fw, 0, 0], 
+                                            [0, orig_h/fh, 0], 
+                                            [0, 0, 1]])
+                    
+                    gps_lat_sum.append(self.gps_lat[i])
+                    gps_lon_sum.append(self.gps_lon[i])
+                    gps_alt_sum.append(self.gps_alt[i])
+                    
+                    # The "Corrected" rotation for full-res pixels
+                    R_full_res = scale_to_orig @ R_matrix @ scale_to_fixed
+
+                    # Combine: New H = best_H @ R_full_res
+                    # This allows the warper to use the 0-degree original image
+                    best_H_corrected = best_H @ R_full_res
+
+                    # New row started. Save all the transformations in the past
+                    transformations_list.append(transformations)
+                    transformations = []
+                    accumulated_H = np.eye(3)
+                    all_corners_list.append(all_corners)
+                    all_corners = []
+                    gps_lat_mean.append(sum(gps_lat_sum)/len(gps_lat_sum))
+                    gps_lon_mean.append(sum(gps_lon_sum)/len(gps_lon_sum))
+                    gps_alt_mean.append(sum(gps_alt_sum)/len(gps_alt_sum))
+                    
+                    # Chain to global accumulated matrix
+                    accumulated_H = accumulated_H @ best_H_corrected
+                    transformations.append(accumulated_H.copy())
+
+                    orientation_vector = np.array([[self.gps_lat[index_of_beginning_of_row], self.gps_lon[index_of_beginning_of_row], 0], [self.gps_lat[i], self.gps_lon[i], 0]], dtype=np.float32)
+                    gps_vec = orientation_vector[1] - orientation_vector[0]
+
+                    stitch_vec = image_origins[i] - image_origins[index_of_beginning_of_row]
+
+                    rotation_angle = _gohlketransforms.angle_between_vectors(stitch_vec, gps_vec)
+                    self.orientation_angle_between_original_images_and_stitched_images.append(rotation_angle)
+
+                    index_of_beginning_of_row = i
                 elif best_rot_idx == 3: # 270 deg (90 CCW)
                     # (x, y) -> (fh - y, x)
                     R_matrix = np.array([[0, -1, fh], 
                                          [1, 0, 0], 
                                          [0, 0, 1]], dtype=np.float32)
+                    
+                    orig_h, orig_w = original_sizes[i]
+                    scale_to_fixed = np.array([[fw/orig_w, 0, 0], 
+                                            [0, fh/orig_h, 0], 
+                                            [0, 0, 1]])
+                    scale_to_orig = np.array([[orig_w/fw, 0, 0], 
+                                            [0, orig_h/fh, 0], 
+                                            [0, 0, 1]])
+                    
+                    gps_lat_sum.append(self.gps_lat[i])
+                    gps_lon_sum.append(self.gps_lon[i])
+                    gps_alt_sum.append(self.gps_alt[i])
+                    
+                    # The "Corrected" rotation for full-res pixels
+                    R_full_res = scale_to_orig @ R_matrix @ scale_to_fixed
 
-                orig_h, orig_w = original_sizes[i]
-                scale_to_fixed = np.array([[fw/orig_w, 0, 0], 
-                                           [0, fh/orig_h, 0], 
-                                           [0, 0, 1]])
-                scale_to_orig = np.array([[orig_w/fw, 0, 0], 
-                                          [0, orig_h/fh, 0], 
-                                          [0, 0, 1]])
-                
-                # The "Corrected" rotation for full-res pixels
-                R_full_res = scale_to_orig @ R_matrix @ scale_to_fixed
+                    # Combine: New H = best_H @ R_full_res
+                    # This allows the warper to use the 0-degree original image
+                    best_H_corrected = best_H @ R_full_res
 
-                # Combine: New H = best_H @ R_full_res
-                # This allows the warper to use the 0-degree original image
-                best_H_corrected = best_H @ R_full_res
+                    # New row started. Save all the transformations in the past
+                    transformations_list.append(transformations)
+                    transformations = []
+                    accumulated_H = np.eye(3)
+                    all_corners_list.append(all_corners)
+                    all_corners = []
+                    gps_lat_mean.append(sum(gps_lat_sum)/len(gps_lat_sum))
+                    gps_lon_mean.append(sum(gps_lon_sum)/len(gps_lon_sum))
+                    gps_alt_mean.append(sum(gps_alt_sum)/len(gps_alt_sum))
+                    
+                    # Chain to global accumulated matrix
+                    accumulated_H = accumulated_H @ best_H_corrected
+                    transformations.append(accumulated_H.copy())
 
-                # Chain to global accumulated matrix
-                accumulated_H = accumulated_H @ best_H_corrected
-                transformations.append(accumulated_H.copy())
+                    orientation_vector = np.array([[self.gps_lat[index_of_beginning_of_row], self.gps_lon[index_of_beginning_of_row], 0], [self.gps_lat[i], self.gps_lon[i], 0]], dtype=np.float32)
+                    gps_vec = orientation_vector[1] - orientation_vector[0]
 
+                    stitch_vec = image_origins[i] - image_origins[index_of_beginning_of_row]
 
-                hi, wi = original_sizes[i]
-                S = np.array([[wi/fw, 0, 0], [0, hi/fh, 0], [0, 0, 1]])
-                S_inv = np.linalg.inv(S)
+                    rotation_angle = _gohlketransforms.angle_between_vectors(stitch_vec, gps_vec)
+                    self.orientation_angle_between_original_images_and_stitched_images.append(rotation_angle)
 
-                # Update corners for bounding box
-                corners_i = np.array([[0, 0], [0, hi], [wi, hi], [wi, 0]], dtype=np.float32)
-                # Use perspectiveTransform for 3x3 matrices
-                corners_i_transformed = cv2.perspectiveTransform(corners_i.reshape(-1, 1, 2), accumulated_H)
-                all_corners.append(corners_i_transformed.reshape(-1, 2))
+                    index_of_beginning_of_row = i
+
 
                 # Visualization: Draw only the BEST matching features on the image
                 image_cv = cv2.imread(self.image_stitch_paths[i])
@@ -844,111 +1073,131 @@ class StitchingNode(Node):
                 # Append identity or last known H to maintain list length
                 transformations.append(accumulated_H.copy())
 
-        return transformations, all_corners
+        return transformations_list, all_corners_list, gps_lat_mean, gps_lon_mean, gps_alt_mean
 
 
 
     def stitch_images(self, transformations, all_corners):
         """Stitch images together into a panorama using original blending logic."""
         print("Starting stitching of images...")
-        all_corners = np.vstack(all_corners)
-        x_min, y_min = np.int32(all_corners.min(axis=0) - 0.5)
-        x_max, y_max = np.int32(all_corners.max(axis=0) + 0.5)
-        panorama_width = x_max - x_min
-        panorama_height = y_max - y_min
+        image_iter = 0
+        panorama_list = []
+        panorama_mask_list = []
+        panorama_heatmap_list = []
+        for k in range(len(transformations)):
+            group_corners = np.vstack(all_corners[k])
 
-        total_stitching = len(self.image_paths)
-        stitch_count = 0
+            x_min, y_min = np.floor(group_corners.min(axis=0)).astype(np.int32)
+            x_max, y_max = np.ceil(group_corners.max(axis=0)).astype(np.int32)
 
-        # Compute the translation matrix
-        translation = np.array([[1, 0, -x_min],
-                                [0, 1, -y_min],
-                                [0, 0, 1]])
+#             min_coords = np.int32(all_corners[k]).min()
+#             max_coords = np.int32(all_corners[k]).max()
+# 
+#             x_min, y_min = min_coords.astype(np.int32)
+#             x_max, y_max = max_coords.astype(np.int32)
 
-        # Initialize the panorama and mask
-        panorama = np.zeros((panorama_height, panorama_width, 4), dtype=np.uint8)
-        panorama_mask = np.zeros((panorama_height, panorama_width, 4), dtype=np.uint8)
-        panorama_heatmap = np.zeros((panorama_height, panorama_width, 4), dtype=np.uint8)
-        mask_panorama = np.zeros((panorama_height, panorama_width), dtype=np.uint8)
+            # x_min, y_min = np.int32(np.vstack(all_corners[k]).min(axis=0) - 0.5)
+            # x_max, y_max = np.int32(np.vstack(all_corners[k]).max(axis=0) + 0.5)
 
-        # Warp and blend each image using the original blending logic
-        for i in range(len(self.image_paths)):
-            stitch_count += 1
-            print(f"Stitching image {stitch_count}/{total_stitching}")
+            panorama_width = x_max - x_min
+            panorama_height = y_max - y_min
 
-            # 1. Load image
-            rgb_image_cv = cv2.imread(self.image_paths[i])
-            mask_image_cv = cv2.imread(self.mask_paths[i])
-            heatmap_image_cv = cv2.imread(self.heatmap_paths[i])
-            print(f"Processing image: {self.image_paths[i]}, {self.mask_paths[i]}, {self.heatmap_paths[i]}")
-            if rgb_image_cv is None or mask_image_cv is None or heatmap_image_cv is None :
-                print(f"Error loading image {self.image_paths[i]}, {self.mask_paths[i]}, {self.heatmap_paths[i]}")
-                return None, None, None
+            total_stitching = len(self.image_paths)
+            stitch_count = 0
 
-            # 2. Crop image
-            rgb_h, rgb_w = rgb_image_cv.shape[:2]
-            mask_h, mask_w = mask_image_cv.shape[:2]
-            heatmap_h, heatmap_w = heatmap_image_cv.shape[:2]
-            rgb_image_cropped = rgb_image_cv[self.config["top_crop"]:rgb_h - self.config["bottom_crop"], self.config["left_crop"]:rgb_w - self.config["right_crop"]]
-            mask_image_cropped = mask_image_cv[self.config["top_crop"]:mask_h - self.config["bottom_crop"], self.config["left_crop"]:mask_w - self.config["right_crop"]]
-            heatmap_image_cropped = heatmap_image_cv[self.config["top_crop"]:heatmap_h - self.config["bottom_crop"], self.config["left_crop"]:heatmap_w - self.config["right_crop"]]
+            # Compute the translation matrix
+            translation = np.array([[1, 0, -x_min],
+                                    [0, 1, -y_min],
+                                    [0, 0, 1]])
 
-            hi, wi = rgb_image_cropped.shape[:2]
+            # Initialize the panorama and mask
+            panorama = np.zeros((panorama_height, panorama_width, 4), dtype=np.uint8)
+            panorama_mask = np.zeros((panorama_height, panorama_width, 4), dtype=np.uint8)
+            panorama_heatmap = np.zeros((panorama_height, panorama_width, 4), dtype=np.uint8)
+            mask_panorama = np.zeros((panorama_height, panorama_width), dtype=np.uint8)
 
-            # 5. Now perform your coordinate math
-            H = transformations[i]
-            H_total = translation @ H
+            # Warp and blend each image using the original blending logic
+            for i in range(len(transformations[k])):
+                stitch_count += 1
+                print(f"Stitching image {stitch_count}/{total_stitching}")
 
-            tx = H_total[0, 2]
-            ty = H_total[1, 2]
+                # 1. Load image
+                rgb_image_cv = cv2.imread(self.image_paths[image_iter])
+                mask_image_cv = cv2.imread(self.mask_paths[image_iter])
+                heatmap_image_cv = cv2.imread(self.heatmap_paths[image_iter])
+                print(f"Processing image: {self.image_paths[image_iter]}, {self.mask_paths[image_iter]}, {self.heatmap_paths[image_iter]}")
+                if rgb_image_cv is None or mask_image_cv is None or heatmap_image_cv is None :
+                    print(f"Error loading image {self.image_paths[image_iter]}, {self.mask_paths[image_iter]}, {self.heatmap_paths[image_iter]}")
+                    return None, None, None
 
-            print(f"[Image {i}] Translation -> x: {tx:.2f}, y: {ty:.2f}")
+                # 2. Crop image
+                rgb_h, rgb_w = rgb_image_cv.shape[:2]
+                mask_h, mask_w = mask_image_cv.shape[:2]
+                heatmap_h, heatmap_w = heatmap_image_cv.shape[:2]
+                rgb_image_cropped = rgb_image_cv[self.config["top_crop"]:rgb_h - self.config["bottom_crop"], self.config["left_crop"]:rgb_w - self.config["right_crop"]]
+                mask_image_cropped = mask_image_cv[self.config["top_crop"]:mask_h - self.config["bottom_crop"], self.config["left_crop"]:mask_w - self.config["right_crop"]]
+                heatmap_image_cropped = heatmap_image_cv[self.config["top_crop"]:heatmap_h - self.config["bottom_crop"], self.config["left_crop"]:heatmap_w - self.config["right_crop"]]
 
-            center = np.array([[wi / 2, hi / 2, 1.0]])
-            center_pan = (H_total @ center.T).flatten()
+                hi, wi = rgb_image_cropped.shape[:2]
 
-            print(f"[Image {i}] center -> x: {center_pan[0]:.2f}, y: {center_pan[1]:.2f}")
+                # 5. Now perform your coordinate math
+                H = transformations[k][i]
+                H_total = translation @ H
 
-            # Warp the image
-            warped_image_i = cv2.warpPerspective(rgb_image_cropped, H_total, (panorama_width, panorama_height))
-            warped_mask_image_i = cv2.warpPerspective(mask_image_cropped, H_total, (panorama_width, panorama_height))
-            warped_heatmap_image_i = cv2.warpPerspective(heatmap_image_cropped, H_total, (panorama_width, panorama_height))
+                tx = H_total[0, 2]
+                ty = H_total[1, 2]
 
-            warped_image_i = cv2.cvtColor(warped_image_i, cv2.COLOR_BGR2BGRA)
-            warped_mask_image_i = cv2.cvtColor(warped_mask_image_i, cv2.COLOR_BGR2BGRA)
-            warped_heatmap_image_i = cv2.cvtColor(warped_heatmap_image_i, cv2.COLOR_BGR2BGRA)
+                print(f"[Image {i}] Translation -> x: {tx:.2f}, y: {ty:.2f}")
 
-            # Warp the mask
-            hi, wi = rgb_image_cropped.shape[:2]
-            mask_i = np.ones((hi, wi), dtype=np.uint8) * 255
-            warped_mask_i = cv2.warpPerspective(mask_i, H_total, (panorama_width, panorama_height))
+                center = np.array([[wi / 2, hi / 2, 1.0]])
+                center_pan = (H_total @ center.T).flatten()
 
-            # Update panorama and mask_panorama with original blending logic
-            mask_overlap = warped_mask_i > 0
-            # panorama[mask_overlap] = warped_image_i[mask_overlap]
-            # panorama_mask[mask_overlap] = warped_mask_image_i[mask_overlap]
-            # panorama_heatmap[mask_overlap] = warped_heatmap_image_i[mask_overlap]
+                print(f"[Image {i}] center -> x: {float(center_pan[0]):.2f}, y: {float(center_pan[1]):.2f}")
 
-            panorama[mask_overlap, :3] = warped_image_i[mask_overlap, :3]
-            panorama[mask_overlap, 3] = 255
+                # Warp the image
+                warped_image_i = cv2.warpPerspective(rgb_image_cropped, H_total, (panorama_width, panorama_height))
+                warped_mask_image_i = cv2.warpPerspective(mask_image_cropped, H_total, (panorama_width, panorama_height))
+                warped_heatmap_image_i = cv2.warpPerspective(heatmap_image_cropped, H_total, (panorama_width, panorama_height))
 
-            panorama_mask[mask_overlap, :3] = warped_mask_image_i[mask_overlap, :3]
-            panorama_mask[mask_overlap, 3] = 255
+                warped_image_i = cv2.cvtColor(warped_image_i, cv2.COLOR_BGR2BGRA)
+                warped_mask_image_i = cv2.cvtColor(warped_mask_image_i, cv2.COLOR_BGR2BGRA)
+                warped_heatmap_image_i = cv2.cvtColor(warped_heatmap_image_i, cv2.COLOR_BGR2BGRA)
 
-            panorama_heatmap[mask_overlap, :3] = warped_heatmap_image_i[mask_overlap, :3]
-            panorama_heatmap[mask_overlap, 3] = 255
+                # Warp the mask
+                hi, wi = rgb_image_cropped.shape[:2]
+                mask_i = np.ones((hi, wi), dtype=np.uint8) * 255
+                warped_mask_i = cv2.warpPerspective(mask_i, H_total, (panorama_width, panorama_height))
 
-            # Mask for masking panorama
-            mask_panorama[mask_overlap] = warped_mask_i[mask_overlap]
+                # Update panorama and mask_panorama with original blending logic
+                mask_overlap = warped_mask_i > 0
+                # panorama[mask_overlap] = warped_image_i[mask_overlap]
+                # panorama_mask[mask_overlap] = warped_mask_image_i[mask_overlap]
+                # panorama_heatmap[mask_overlap] = warped_heatmap_image_i[mask_overlap]
 
-            del rgb_image_cv, rgb_image_cropped, warped_image_i, mask_image_cv, mask_image_cropped, warped_mask_image_i, heatmap_image_cv, heatmap_image_cropped, warped_heatmap_image_i
-            gc.collect()
-            torch.cuda.empty_cache()
+                panorama[mask_overlap, :3] = warped_image_i[mask_overlap, :3]
+                panorama[mask_overlap, 3] = 255
 
-            print(f"Stitched image {i + 1} of {len(self.image_paths)}")
+                panorama_mask[mask_overlap, :3] = warped_mask_image_i[mask_overlap, :3]
+                panorama_mask[mask_overlap, 3] = 255
+
+                panorama_heatmap[mask_overlap, :3] = warped_heatmap_image_i[mask_overlap, :3]
+                panorama_heatmap[mask_overlap, 3] = 255
+
+                # Mask for masking panorama
+                mask_panorama[mask_overlap] = warped_mask_i[mask_overlap]
+
+                del rgb_image_cv, rgb_image_cropped, warped_image_i, mask_image_cv, mask_image_cropped, warped_mask_image_i, heatmap_image_cv, heatmap_image_cropped, warped_heatmap_image_i
+                gc.collect()
+                torch.cuda.empty_cache()
+
+                print(f"Stitched image {image_iter + 1} of {len(self.image_paths)}")
+                image_iter += 1
+            panorama_list.append(panorama)
+            panorama_mask_list.append(panorama_mask)
+            panorama_heatmap_list.append(panorama_heatmap)
 
         print("Stitching completed.")
-        return panorama, panorama_mask, panorama_heatmap
+        return panorama_list, panorama_mask_list, panorama_heatmap_list
 
 
 def main(args=None):

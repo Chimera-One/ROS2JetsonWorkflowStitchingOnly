@@ -22,6 +22,10 @@ custom_interfaces__msg__StitchedData__init(custom_interfaces__msg__StitchedData 
     return false;
   }
   // rotation_degree
+  // latitude
+  // longitude
+  // altitude
+  // numberofimages
   // image
   if (!sensor_msgs__msg__Image__init(&msg->image)) {
     custom_interfaces__msg__StitchedData__fini(msg);
@@ -37,6 +41,10 @@ custom_interfaces__msg__StitchedData__fini(custom_interfaces__msg__StitchedData 
     return;
   }
   // rotation_degree
+  // latitude
+  // longitude
+  // altitude
+  // numberofimages
   // image
   sensor_msgs__msg__Image__fini(&msg->image);
 }
@@ -49,6 +57,22 @@ custom_interfaces__msg__StitchedData__are_equal(const custom_interfaces__msg__St
   }
   // rotation_degree
   if (lhs->rotation_degree != rhs->rotation_degree) {
+    return false;
+  }
+  // latitude
+  if (lhs->latitude != rhs->latitude) {
+    return false;
+  }
+  // longitude
+  if (lhs->longitude != rhs->longitude) {
+    return false;
+  }
+  // altitude
+  if (lhs->altitude != rhs->altitude) {
+    return false;
+  }
+  // numberofimages
+  if (lhs->numberofimages != rhs->numberofimages) {
     return false;
   }
   // image
@@ -70,6 +94,14 @@ custom_interfaces__msg__StitchedData__copy(
   }
   // rotation_degree
   output->rotation_degree = input->rotation_degree;
+  // latitude
+  output->latitude = input->latitude;
+  // longitude
+  output->longitude = input->longitude;
+  // altitude
+  output->altitude = input->altitude;
+  // numberofimages
+  output->numberofimages = input->numberofimages;
   // image
   if (!sensor_msgs__msg__Image__copy(
       &(input->image), &(output->image)))

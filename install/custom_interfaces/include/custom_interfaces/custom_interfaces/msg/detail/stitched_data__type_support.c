@@ -37,7 +37,7 @@ void custom_interfaces__msg__StitchedData__rosidl_typesupport_introspection_c__S
   custom_interfaces__msg__StitchedData__fini(message_memory);
 }
 
-static rosidl_typesupport_introspection_c__MessageMember custom_interfaces__msg__StitchedData__rosidl_typesupport_introspection_c__StitchedData_message_member_array[2] = {
+static rosidl_typesupport_introspection_c__MessageMember custom_interfaces__msg__StitchedData__rosidl_typesupport_introspection_c__StitchedData_message_member_array[6] = {
   {
     "rotation_degree",  // name
     rosidl_typesupport_introspection_c__ROS_TYPE_DOUBLE,  // type
@@ -47,6 +47,74 @@ static rosidl_typesupport_introspection_c__MessageMember custom_interfaces__msg_
     0,  // array size
     false,  // is upper bound
     offsetof(custom_interfaces__msg__StitchedData, rotation_degree),  // bytes offset in struct
+    NULL,  // default value
+    NULL,  // size() function pointer
+    NULL,  // get_const(index) function pointer
+    NULL,  // get(index) function pointer
+    NULL,  // fetch(index, &value) function pointer
+    NULL,  // assign(index, value) function pointer
+    NULL  // resize(index) function pointer
+  },
+  {
+    "latitude",  // name
+    rosidl_typesupport_introspection_c__ROS_TYPE_DOUBLE,  // type
+    0,  // upper bound of string
+    NULL,  // members of sub message
+    false,  // is array
+    0,  // array size
+    false,  // is upper bound
+    offsetof(custom_interfaces__msg__StitchedData, latitude),  // bytes offset in struct
+    NULL,  // default value
+    NULL,  // size() function pointer
+    NULL,  // get_const(index) function pointer
+    NULL,  // get(index) function pointer
+    NULL,  // fetch(index, &value) function pointer
+    NULL,  // assign(index, value) function pointer
+    NULL  // resize(index) function pointer
+  },
+  {
+    "longitude",  // name
+    rosidl_typesupport_introspection_c__ROS_TYPE_DOUBLE,  // type
+    0,  // upper bound of string
+    NULL,  // members of sub message
+    false,  // is array
+    0,  // array size
+    false,  // is upper bound
+    offsetof(custom_interfaces__msg__StitchedData, longitude),  // bytes offset in struct
+    NULL,  // default value
+    NULL,  // size() function pointer
+    NULL,  // get_const(index) function pointer
+    NULL,  // get(index) function pointer
+    NULL,  // fetch(index, &value) function pointer
+    NULL,  // assign(index, value) function pointer
+    NULL  // resize(index) function pointer
+  },
+  {
+    "altitude",  // name
+    rosidl_typesupport_introspection_c__ROS_TYPE_DOUBLE,  // type
+    0,  // upper bound of string
+    NULL,  // members of sub message
+    false,  // is array
+    0,  // array size
+    false,  // is upper bound
+    offsetof(custom_interfaces__msg__StitchedData, altitude),  // bytes offset in struct
+    NULL,  // default value
+    NULL,  // size() function pointer
+    NULL,  // get_const(index) function pointer
+    NULL,  // get(index) function pointer
+    NULL,  // fetch(index, &value) function pointer
+    NULL,  // assign(index, value) function pointer
+    NULL  // resize(index) function pointer
+  },
+  {
+    "numberofimages",  // name
+    rosidl_typesupport_introspection_c__ROS_TYPE_INT64,  // type
+    0,  // upper bound of string
+    NULL,  // members of sub message
+    false,  // is array
+    0,  // array size
+    false,  // is upper bound
+    offsetof(custom_interfaces__msg__StitchedData, numberofimages),  // bytes offset in struct
     NULL,  // default value
     NULL,  // size() function pointer
     NULL,  // get_const(index) function pointer
@@ -77,7 +145,7 @@ static rosidl_typesupport_introspection_c__MessageMember custom_interfaces__msg_
 static const rosidl_typesupport_introspection_c__MessageMembers custom_interfaces__msg__StitchedData__rosidl_typesupport_introspection_c__StitchedData_message_members = {
   "custom_interfaces__msg",  // message namespace
   "StitchedData",  // message name
-  2,  // number of fields
+  6,  // number of fields
   sizeof(custom_interfaces__msg__StitchedData),
   custom_interfaces__msg__StitchedData__rosidl_typesupport_introspection_c__StitchedData_message_member_array,  // message members
   custom_interfaces__msg__StitchedData__rosidl_typesupport_introspection_c__StitchedData_init_function,  // function to initialize message memory (memory has to be allocated)
@@ -95,7 +163,7 @@ static rosidl_message_type_support_t custom_interfaces__msg__StitchedData__rosid
 ROSIDL_TYPESUPPORT_INTROSPECTION_C_EXPORT_custom_interfaces
 const rosidl_message_type_support_t *
 ROSIDL_TYPESUPPORT_INTERFACE__MESSAGE_SYMBOL_NAME(rosidl_typesupport_introspection_c, custom_interfaces, msg, StitchedData)() {
-  custom_interfaces__msg__StitchedData__rosidl_typesupport_introspection_c__StitchedData_message_member_array[1].members_ =
+  custom_interfaces__msg__StitchedData__rosidl_typesupport_introspection_c__StitchedData_message_member_array[5].members_ =
     ROSIDL_TYPESUPPORT_INTERFACE__MESSAGE_SYMBOL_NAME(rosidl_typesupport_introspection_c, sensor_msgs, msg, Image)();
   if (!custom_interfaces__msg__StitchedData__rosidl_typesupport_introspection_c__StitchedData_message_type_support_handle.typesupport_identifier) {
     custom_interfaces__msg__StitchedData__rosidl_typesupport_introspection_c__StitchedData_message_type_support_handle.typesupport_identifier =

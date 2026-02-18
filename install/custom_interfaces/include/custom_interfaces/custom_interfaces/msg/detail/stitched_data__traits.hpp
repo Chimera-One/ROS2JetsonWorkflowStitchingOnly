@@ -36,6 +36,34 @@ inline void to_flow_style_yaml(
     out << ", ";
   }
 
+  // member: latitude
+  {
+    out << "latitude: ";
+    rosidl_generator_traits::value_to_yaml(msg.latitude, out);
+    out << ", ";
+  }
+
+  // member: longitude
+  {
+    out << "longitude: ";
+    rosidl_generator_traits::value_to_yaml(msg.longitude, out);
+    out << ", ";
+  }
+
+  // member: altitude
+  {
+    out << "altitude: ";
+    rosidl_generator_traits::value_to_yaml(msg.altitude, out);
+    out << ", ";
+  }
+
+  // member: numberofimages
+  {
+    out << "numberofimages: ";
+    rosidl_generator_traits::value_to_yaml(msg.numberofimages, out);
+    out << ", ";
+  }
+
   // member: image
   {
     out << "image: ";
@@ -55,6 +83,46 @@ inline void to_block_style_yaml(
     }
     out << "rotation_degree: ";
     rosidl_generator_traits::value_to_yaml(msg.rotation_degree, out);
+    out << "\n";
+  }
+
+  // member: latitude
+  {
+    if (indentation > 0) {
+      out << std::string(indentation, ' ');
+    }
+    out << "latitude: ";
+    rosidl_generator_traits::value_to_yaml(msg.latitude, out);
+    out << "\n";
+  }
+
+  // member: longitude
+  {
+    if (indentation > 0) {
+      out << std::string(indentation, ' ');
+    }
+    out << "longitude: ";
+    rosidl_generator_traits::value_to_yaml(msg.longitude, out);
+    out << "\n";
+  }
+
+  // member: altitude
+  {
+    if (indentation > 0) {
+      out << std::string(indentation, ' ');
+    }
+    out << "altitude: ";
+    rosidl_generator_traits::value_to_yaml(msg.altitude, out);
+    out << "\n";
+  }
+
+  // member: numberofimages
+  {
+    if (indentation > 0) {
+      out << std::string(indentation, ' ');
+    }
+    out << "numberofimages: ";
+    rosidl_generator_traits::value_to_yaml(msg.numberofimages, out);
     out << "\n";
   }
 

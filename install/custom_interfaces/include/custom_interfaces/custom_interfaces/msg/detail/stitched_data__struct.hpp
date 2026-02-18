@@ -44,6 +44,10 @@ struct StitchedData_
       rosidl_runtime_cpp::MessageInitialization::ZERO == _init)
     {
       this->rotation_degree = 0.0;
+      this->latitude = 0.0;
+      this->longitude = 0.0;
+      this->altitude = 0.0;
+      this->numberofimages = 0ll;
     }
   }
 
@@ -54,6 +58,10 @@ struct StitchedData_
       rosidl_runtime_cpp::MessageInitialization::ZERO == _init)
     {
       this->rotation_degree = 0.0;
+      this->latitude = 0.0;
+      this->longitude = 0.0;
+      this->altitude = 0.0;
+      this->numberofimages = 0ll;
     }
   }
 
@@ -61,6 +69,18 @@ struct StitchedData_
   using _rotation_degree_type =
     double;
   _rotation_degree_type rotation_degree;
+  using _latitude_type =
+    double;
+  _latitude_type latitude;
+  using _longitude_type =
+    double;
+  _longitude_type longitude;
+  using _altitude_type =
+    double;
+  _altitude_type altitude;
+  using _numberofimages_type =
+    int64_t;
+  _numberofimages_type numberofimages;
   using _image_type =
     sensor_msgs::msg::Image_<ContainerAllocator>;
   _image_type image;
@@ -70,6 +90,30 @@ struct StitchedData_
     const double & _arg)
   {
     this->rotation_degree = _arg;
+    return *this;
+  }
+  Type & set__latitude(
+    const double & _arg)
+  {
+    this->latitude = _arg;
+    return *this;
+  }
+  Type & set__longitude(
+    const double & _arg)
+  {
+    this->longitude = _arg;
+    return *this;
+  }
+  Type & set__altitude(
+    const double & _arg)
+  {
+    this->altitude = _arg;
+    return *this;
+  }
+  Type & set__numberofimages(
+    const int64_t & _arg)
+  {
+    this->numberofimages = _arg;
     return *this;
   }
   Type & set__image(
@@ -122,6 +166,18 @@ struct StitchedData_
   bool operator==(const StitchedData_ & other) const
   {
     if (this->rotation_degree != other.rotation_degree) {
+      return false;
+    }
+    if (this->latitude != other.latitude) {
+      return false;
+    }
+    if (this->longitude != other.longitude) {
+      return false;
+    }
+    if (this->altitude != other.altitude) {
+      return false;
+    }
+    if (this->numberofimages != other.numberofimages) {
       return false;
     }
     if (this->image != other.image) {
