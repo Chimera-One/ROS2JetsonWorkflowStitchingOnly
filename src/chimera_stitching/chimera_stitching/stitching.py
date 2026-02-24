@@ -78,6 +78,7 @@ class StitchingNode(Node):
         self.orientation_vector = np.array([[0, 0], [0, 0]], dtype=np.float32)
         self.stitched_orientation_vector = np.array([[0, 0], [0, 0]], dtype=np.float32)
         self.orientation_angle_between_original_images_and_stitched_images = []
+        self.previous_orientation_angle_between_original_images_and_stitched_images = 0
 
         self.gps_lat = []
         self.gps_lon = []
@@ -877,17 +878,43 @@ class StitchingNode(Node):
                         gps_alt_mean.append(sum(gps_alt_sum)/len(gps_alt_sum))
                         print("Debug 0")
 
-                        orientation_vector = np.array([[self.gps_lat[index_of_beginning_of_row], self.gps_lon[index_of_beginning_of_row], 0], [self.gps_lat[i], self.gps_lon[i], 0]], dtype=np.float32)
-                        print("Debug 1")
-                        gps_vec = orientation_vector[1] - orientation_vector[0]
-                        print("Debug 2")
+                        # orientation_vector = np.array([[self.gps_lat[index_of_beginning_of_row], self.gps_lon[index_of_beginning_of_row], 0], [self.gps_lat[i], self.gps_lon[i], 0]], dtype=np.float32)
+                        # print("Debug 1")
+                        # gps_vec = orientation_vector[1] - orientation_vector[0]
+                        # print("Debug 2")
 
+                        p_start_gps = np.array([self.gps_lon[index_of_beginning_of_row], self.gps_lat[index_of_beginning_of_row], 0.0])
+                        p_end_gps = np.array([self.gps_lon[i], self.gps_lat[i], 0.0])
+                        gps_vec = p_end_gps - p_start_gps
+
+                        global_heading_rad = math.atan2(gps_vec[0], gps_vec[1])
                         stitch_vec = image_origins[i] - image_origins[index_of_beginning_of_row]
-                        print("Debug 3")
+                        image_heading_rad = math.atan2(stitch_vec[0], stitch_vec[1])
 
-                        rotation_angle = _gohlketransforms.angle_between_vectors(stitch_vec, gps_vec)
-                        print("Debug 4")
-                        self.orientation_angle_between_original_images_and_stitched_images.append(rotation_angle)
+                        # The rotation applied by the matcher (0, 90, 180, 270)
+                        # internal_rotation_rad = math.radians(best_rot_idx * 90)
+
+                        # The total rotation to align the stitched row to North:
+                        # Total = Global Heading + Internal Rotation
+                        total_rotation_deg = math.degrees(global_heading_rad - image_heading_rad + math.pi) + self.previous_orientation_angle_between_original_images_and_stitched_images
+
+                        # Normalize to 0-360
+                        total_rotation_deg = (total_rotation_deg + 360) % 360
+                        self.orientation_angle_between_original_images_and_stitched_images.append(total_rotation_deg)
+
+                        # stitch_vec = image_origins[i] - image_origins[index_of_beginning_of_row]
+                        # rotation_angle = _gohlketransforms.angle_between_vectors(stitch_vec, gps_vec)
+
+                        # self.orientation_angle_between_original_images_and_stitched_images.append(rotation_angle)
+
+                        print(f"i: {i}, index_of_beginning_of_row: {index_of_beginning_of_row}")
+                        print(f"gps_vec: {gps_vec}")
+                        print(f"stitch_vec: {stitch_vec}")
+                        print(f"global_heading_rad: {global_heading_rad}")
+                        print(f"image_heading_rad: {image_heading_rad}")
+                        print(f"best_rot_idx * 90: {best_rot_idx * 90}")
+                        print(f"total_rotation_deg: {total_rotation_deg}")
+                        print(f"previous rotations: {self.previous_orientation_angle_between_original_images_and_stitched_images}")
 
                         index_of_beginning_of_row = 0
 
@@ -940,15 +967,50 @@ class StitchingNode(Node):
                     corners_i_transformed = cv2.perspectiveTransform(corners_i.reshape(-1, 1, 2), accumulated_H)
                     all_corners.append(corners_i_transformed.reshape(-1, 2))
 
-                    orientation_vector = np.array([[self.gps_lat[index_of_beginning_of_row], self.gps_lon[index_of_beginning_of_row], 0], [self.gps_lat[i], self.gps_lon[i], 0]], dtype=np.float32)
-                    gps_vec = orientation_vector[1] - orientation_vector[0]
+                    # orientation_vector = np.array([[self.gps_lat[index_of_beginning_of_row], self.gps_lon[index_of_beginning_of_row], 0], [self.gps_lat[i], self.gps_lon[i], 0]], dtype=np.float32)
+                    # gps_vec = orientation_vector[1] - orientation_vector[0]
 
+                    # stitch_vec = image_origins[i] - image_origins[index_of_beginning_of_row]
+
+                    # rotation_angle = _gohlketransforms.angle_between_vectors(stitch_vec, gps_vec)
+                    # self.orientation_angle_between_original_images_and_stitched_images.append(rotation_angle)
+
+                    # 1. Standardize the GPS Vector [East, North, 0]
+                    p_start_gps = np.array([self.gps_lon[index_of_beginning_of_row], self.gps_lat[index_of_beginning_of_row], 0.0])
+                    p_end_gps = np.array([self.gps_lon[i], self.gps_lat[i], 0.0])
+                    gps_vec = p_end_gps - p_start_gps
+
+                    # 2. Calculate Absolute Global Heading
+                    # atan2(dx, dy) gives radians from North (0 rad = North, pi/2 = East)
+                    global_heading_rad = math.atan2(gps_vec[0], gps_vec[1])
                     stitch_vec = image_origins[i] - image_origins[index_of_beginning_of_row]
+                    image_heading_rad = math.atan2(stitch_vec[0], stitch_vec[1])
 
-                    rotation_angle = _gohlketransforms.angle_between_vectors(stitch_vec, gps_vec)
-                    self.orientation_angle_between_original_images_and_stitched_images.append(rotation_angle)
+                    # 3. Add the drone's internal rotation (the turn it made)
+                    internal_rotation_rad = math.radians(best_rot_idx * 90)
 
+                    # 4. Compute Final North-Aligned Degree
+                    total_rotation_deg = math.degrees(global_heading_rad - image_heading_rad + internal_rotation_rad) + self.previous_orientation_angle_between_original_images_and_stitched_images
+                    total_rotation_deg = (total_rotation_deg + 360) % 360
+
+                    print(f"i: {i}, index_of_beginning_of_row: {index_of_beginning_of_row}")
+                    print(f"gps_vec: {gps_vec}")
+                    print(f"stitch_vec: {stitch_vec}")
+                    print(f"global_heading_rad: {global_heading_rad}")
+                    print(f"image_heading_rad: {image_heading_rad}")
+                    print(f"best_rot_idx * 90: {best_rot_idx * 90}")
+                    print(f"total_rotation_deg: {total_rotation_deg}")
+                    print(f"previous rotations: {self.previous_orientation_angle_between_original_images_and_stitched_images}")
+
+                    self.orientation_angle_between_original_images_and_stitched_images.append(total_rotation_deg)
+                    self.previous_orientation_angle_between_original_images_and_stitched_images += best_rot_idx * 90
+
+                    # 5. Reset the row marker
+                    transformations = [np.eye(3)] # Start new row with Identity
+                    all_corners = [corners0] # Or appropriate initial corners
+                    accumulated_H = np.eye(3)
                     index_of_beginning_of_row = i
+                    gps_lat_sum, gps_lon_sum, gps_alt_sum = [], [], []
 
                 elif best_rot_idx == 2: # 180 deg
                     # (x, y) -> (fw - x, fh - y)
@@ -989,15 +1051,51 @@ class StitchingNode(Node):
                     accumulated_H = accumulated_H @ best_H_corrected
                     transformations.append(accumulated_H.copy())
 
-                    orientation_vector = np.array([[self.gps_lat[index_of_beginning_of_row], self.gps_lon[index_of_beginning_of_row], 0], [self.gps_lat[i], self.gps_lon[i], 0]], dtype=np.float32)
-                    gps_vec = orientation_vector[1] - orientation_vector[0]
+                    # orientation_vector = np.array([[self.gps_lat[index_of_beginning_of_row], self.gps_lon[index_of_beginning_of_row], 0], [self.gps_lat[i], self.gps_lon[i], 0]], dtype=np.float32)
+                    # gps_vec = orientation_vector[1] - orientation_vector[0]
 
+                    # stitch_vec = image_origins[i] - image_origins[index_of_beginning_of_row]
+
+                    # rotation_angle = _gohlketransforms.angle_between_vectors(stitch_vec, gps_vec)
+                    # self.orientation_angle_between_original_images_and_stitched_images.append(rotation_angle)
+
+                    # 1. Standardize the GPS Vector [East, North, 0]
+                    p_start_gps = np.array([self.gps_lon[index_of_beginning_of_row], self.gps_lat[index_of_beginning_of_row], 0.0])
+                    p_end_gps = np.array([self.gps_lon[i], self.gps_lat[i], 0.0])
+                    gps_vec = p_end_gps - p_start_gps
+
+                    # 2. Calculate Absolute Global Heading
+                    # atan2(dx, dy) gives radians from North (0 rad = North, pi/2 = East)
+                    global_heading_rad = math.atan2(gps_vec[0], gps_vec[1])
                     stitch_vec = image_origins[i] - image_origins[index_of_beginning_of_row]
+                    image_heading_rad = math.atan2(stitch_vec[0], stitch_vec[1])
 
-                    rotation_angle = _gohlketransforms.angle_between_vectors(stitch_vec, gps_vec)
-                    self.orientation_angle_between_original_images_and_stitched_images.append(rotation_angle)
+                    # 3. Add the drone's internal rotation (the turn it made)
+                    internal_rotation_rad = math.radians(best_rot_idx * 90)
 
+                    # 4. Compute Final North-Aligned Degree
+                    total_rotation_deg = math.degrees(global_heading_rad - image_heading_rad + internal_rotation_rad) + self.previous_orientation_angle_between_original_images_and_stitched_images
+                    total_rotation_deg = (total_rotation_deg + 360) % 360
+
+                    print(f"i: {i}, index_of_beginning_of_row: {index_of_beginning_of_row}")
+                    print(f"gps_vec: {gps_vec}")
+                    print(f"stitch_vec: {stitch_vec}")
+                    print(f"global_heading_rad: {global_heading_rad}")
+                    print(f"image_heading_rad: {image_heading_rad}")
+                    print(f"best_rot_idx * 90: {best_rot_idx * 90}")
+                    print(f"total_rotation_deg: {total_rotation_deg}")
+                    print(f"previous rotations: {self.previous_orientation_angle_between_original_images_and_stitched_images}")
+
+                    self.orientation_angle_between_original_images_and_stitched_images.append(total_rotation_deg)
+                    self.previous_orientation_angle_between_original_images_and_stitched_images += best_rot_idx * 90
+
+                    # 5. Reset the row marker
+                    transformations = [np.eye(3)] # Start new row with Identity
+                    all_corners = [corners0] # Or appropriate initial corners
+                    accumulated_H = np.eye(3)
                     index_of_beginning_of_row = i
+                    gps_lat_sum, gps_lon_sum, gps_alt_sum = [], [], []
+
                 elif best_rot_idx == 3: # 270 deg (90 CCW)
                     # (x, y) -> (fh - y, x)
                     R_matrix = np.array([[0, -1, fh], 
@@ -1037,15 +1135,50 @@ class StitchingNode(Node):
                     accumulated_H = accumulated_H @ best_H_corrected
                     transformations.append(accumulated_H.copy())
 
-                    orientation_vector = np.array([[self.gps_lat[index_of_beginning_of_row], self.gps_lon[index_of_beginning_of_row], 0], [self.gps_lat[i], self.gps_lon[i], 0]], dtype=np.float32)
-                    gps_vec = orientation_vector[1] - orientation_vector[0]
+                    # orientation_vector = np.array([[self.gps_lat[index_of_beginning_of_row], self.gps_lon[index_of_beginning_of_row], 0], [self.gps_lat[i], self.gps_lon[i], 0]], dtype=np.float32)
+                    # gps_vec = orientation_vector[1] - orientation_vector[0]
 
+                    # stitch_vec = image_origins[i] - image_origins[index_of_beginning_of_row]
+
+                    # rotation_angle = _gohlketransforms.angle_between_vectors(stitch_vec, gps_vec)
+                    # self.orientation_angle_between_original_images_and_stitched_images.append(rotation_angle)
+
+                    # 1. Standardize the GPS Vector [East, North, 0]
+                    p_start_gps = np.array([self.gps_lon[index_of_beginning_of_row], self.gps_lat[index_of_beginning_of_row], 0.0])
+                    p_end_gps = np.array([self.gps_lon[i], self.gps_lat[i], 0.0])
+                    gps_vec = p_end_gps - p_start_gps
+
+                    # 2. Calculate Absolute Global Heading
+                    # atan2(dx, dy) gives radians from North (0 rad = North, pi/2 = East)
+                    global_heading_rad = math.atan2(gps_vec[0], gps_vec[1])
                     stitch_vec = image_origins[i] - image_origins[index_of_beginning_of_row]
+                    image_heading_rad = math.atan2(stitch_vec[0], stitch_vec[1])
 
-                    rotation_angle = _gohlketransforms.angle_between_vectors(stitch_vec, gps_vec)
-                    self.orientation_angle_between_original_images_and_stitched_images.append(rotation_angle)
+                    # 3. Add the drone's internal rotation (the turn it made)
+                    internal_rotation_rad = math.radians(best_rot_idx * 90)
 
+                    # 4. Compute Final North-Aligned Degree
+                    total_rotation_deg = math.degrees(global_heading_rad - image_heading_rad + internal_rotation_rad) + self.previous_orientation_angle_between_original_images_and_stitched_images
+                    total_rotation_deg = (total_rotation_deg + 360) % 360
+
+                    print(f"i: {i}, index_of_beginning_of_row: {index_of_beginning_of_row}")
+                    print(f"gps_vec: {gps_vec}")
+                    print(f"stitch_vec: {stitch_vec}")
+                    print(f"global_heading_rad: {global_heading_rad}")
+                    print(f"image_heading_rad: {image_heading_rad}")
+                    print(f"best_rot_idx * 90: {best_rot_idx * 90}")
+                    print(f"total_rotation_deg: {total_rotation_deg}")
+                    print(f"previous rotations: {self.previous_orientation_angle_between_original_images_and_stitched_images}")
+
+                    self.orientation_angle_between_original_images_and_stitched_images.append(total_rotation_deg)
+                    self.previous_orientation_angle_between_original_images_and_stitched_images += best_rot_idx * 90
+
+                    # 5. Reset the row marker
+                    transformations = [np.eye(3)] # Start new row with Identity
+                    all_corners = [corners0] # Or appropriate initial corners
+                    accumulated_H = np.eye(3)
                     index_of_beginning_of_row = i
+                    gps_lat_sum, gps_lon_sum, gps_alt_sum = [], [], []
 
 
                 # Visualization: Draw only the BEST matching features on the image
