@@ -100,6 +100,8 @@ class StitchingNode(Node):
 
         self.extractor = None
 
+        self.panorama_masks = []
+
         #@TODO: Need to destroy threads in stop sequence
 
 
@@ -254,11 +256,47 @@ class StitchingNode(Node):
                     print(f"gps lat means: {gps_lat_means} gps lon means: {gps_lon_means} gps alt means: {gps_alt_means}")
 
                     # panorama = self.stitch_images(self.original_images, transformations, all_corners)
-                    panorama_list, panorama_mask_list, panorama_heatmap_list = self.stitch_images(transformations, all_corners)
+                    panorama_list, panorama_mask_list, panorama_heatmap_list, image_centers, offsets_list = self.stitch_images(transformations, all_corners)
                     print("Stitching Pipeline completed.")
                     print(f"panorama_list length: {len(panorama_list)}")
 
                     for i in range(len(panorama_list)):
+                        # 1. Isolate the Red Channel
+                        # Since your panorama is BGRA, channel 2 is Red
+                        heatmap_bgra = panorama_heatmap_list[i]
+                        red_channel = heatmap_bgra[:, :, 2]
+
+                        # 2. Threshold to find "Hot" areas
+                        # Adjust 200 to a lower value (e.g., 150) if you want to capture more area
+                        _, thresh = cv2.threshold(red_channel, 220, 255, cv2.THRESH_BINARY)
+
+                        # 3. Clean up noise (Optional but recommended)
+                        kernel = np.ones((5,5), np.uint8)
+                        thresh = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel)
+
+                        # 4. Find Contours
+                        contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+                        print(f"{len(contours)} contours found")
+
+                        # 5. Approximate Contours into Polygons
+                        polygons = []
+                        for cnt in contours:
+                            # Only process polygons larger than a certain area to ignore noise
+                            if cv2.contourArea(cnt) > 200: 
+                                epsilon = 0.05 * cv2.arcLength(cnt, True)
+                                approx = cv2.approxPolyDP(cnt, epsilon, True)
+                                polygons.append(approx)
+
+                        print(f"{len(polygons)} polygons filtered")
+
+                        # 6. Draw Polygons on the RGB Panorama (Post-stitching)
+                        # Ensure the color is (B, G, R, A)
+                        cv2.drawContours(panorama_list[i], polygons, -1, (0, 255, 0, 255), 5)
+                        cv2.drawContours(panorama_mask_list[i], polygons, -1, (0, 255, 0, 255), 5)
+                        cv2.drawContours(panorama_heatmap_list[i], polygons, -1, (0, 255, 0, 255), 5)
+
+                    for i in range(len(panorama_list)):
+                        x_off, y_off = offsets_list[i]
 
                         panorama_height, panorama_width = panorama_list[i].shape[:2]
                         bb_width = int(np.ceil(bb_x_max - bb_x_min))
@@ -304,12 +342,37 @@ class StitchingNode(Node):
                             panorama_msg.rotation_degree = float(self.orientation_angle_between_original_images_and_stitched_images[i])
                             self.stitched_heatmap.publish(panorama_msg)
 
+                            current_panorama_corners = all_corners[i]
+                            current_panorama_centers = image_centers[i]
+
+                            for j in range(len(current_panorama_corners)):
+                                # Create a color gradient based on image index
+                                color = (0, int(255 * j / len(current_panorama_corners)), 255, 255)
+                                
+                                # 1. Draw Corners
+                                for k in range(4):
+                                    # Ensure coordinates are integers for OpenCV
+                                    corner_x = int(round(current_panorama_corners[j][k][0] - x_off))
+                                    corner_y = int(round(current_panorama_corners[j][k][1] - y_off))
+                                    
+                                    cv2.circle(panorama_list[i], (corner_x, corner_y), 5, color, -1)
+                                    cv2.circle(panorama_mask_list[i], (corner_x, corner_y), 5, color, -1)
+                                    cv2.circle(panorama_heatmap_list[i], (corner_x, corner_y), 5, color, -1)
+
+                                # 2. Draw Center
+                                cntr_x = int(round(current_panorama_centers[j][0]))
+                                cntr_y = int(round(current_panorama_centers[j][1]))
+                                cv2.circle(panorama_list[i], (cntr_x, cntr_y), 7, color, -1) # Blue center
+                                cv2.circle(panorama_mask_list[i], (cntr_x, cntr_y), 7, color, -1)
+                                cv2.circle(panorama_heatmap_list[i], (cntr_x, cntr_y), 7, color, -1)
+
                             cv2.imwrite(os.path.join(self.config['output_dir'], self.config['output_filename']) + str(self.iteration) + "_" + str(i) + ".png", panorama_list[i])
                             cv2.imwrite(os.path.join(self.config['output_dir'], self.config['output_filename']) + str(self.iteration) + "_" + str(i) + "_mask.png", panorama_mask_list[i])
                             cv2.imwrite(os.path.join(self.config['output_dir'], self.config['output_filename']) + str(self.iteration) + "_" + str(i) + "_heatmap.png", panorama_heatmap_list[i])
-
+                            
                             self.is_stitch_ready = False
                             self.is_dir_reset = False
+
                         else:
                             print(f"--- Panorama EXCEEDS the bounding box. Iteration: {self.iteration}")
                             print(f"Panorama size: ({panorama_width}, {panorama_height})")
@@ -504,33 +567,22 @@ class StitchingNode(Node):
             x_px = dx * f_px / previous_gps[2]  # scale by previous altitude
             y_px = dy * f_px / previous_gps[2]
 
-            self.get_logger().info(f"Debug 0")
-
             # Vector math
             expected_vector = np.array([x_px, y_px]) # in pixel coordinate
             stitch_orientation[1][0] = stitch_orientation[1][0] + expected_vector[0]
             stitch_orientation[1][1] = stitch_orientation[1][1] + expected_vector[1]
-            self.get_logger().info(f"Debug 1")
             expected_scale = current_gps[2] / previous_gps[2]
-
-            self.get_logger().info(f"Debug 2")
 
             # Compute origin and scale
             current_image_origin = previous_image_origin + expected_vector
-            self.get_logger().info(f"Debug 3")
             current_image_origin_3d = np.array([
                 previous_image_origin[0] + expected_vector[0],
                 previous_image_origin[1] + expected_vector[1],
                 0 # Or use a scaled altitude difference if needed
             ], dtype=np.float32)
-            self.get_logger().info(f"Debug 4")
             image_origins.append(current_image_origin_3d)
-            self.get_logger().info(f"Debug 5")
             current_image_size = previous_image_size * expected_scale
-            self.get_logger().info(f"Debug 6")
             w_resized, h_resized = current_image_size
-
-            self.get_logger().info(f"Debug 7")
 
             # Compute corners centered at origin
             current_corners = np.array([
@@ -807,9 +859,9 @@ class StitchingNode(Node):
                     H_affine, inliers = retval
                     if H_affine is not None:
                         num_inliers = np.sum(inliers)
-                        print(f"{num_inliers} at orientation of {rot_idx * 90}")
+                        # print(f"{num_inliers} at orientation of {rot_idx * 90}")
                         if num_inliers > best_inliers_count:
-                            print(f"Updating best H with {rot_idx * 90}")
+                            # print(f"Updating best H with {rot_idx * 90}")
                             best_inliers_count = num_inliers
                             best_H = np.vstack([H_affine, [0, 0, 1]])
                             best_m_kpts1_orig = m_kpts1_orig # For visualization
@@ -820,7 +872,6 @@ class StitchingNode(Node):
                     print("Something went wrong unpacing estimateAffinePartial2D")
 
             # --- Post-search: Process the winning rotation ---
-            print(f"--- Debug 5 ---")
             if best_H is not None:
                 # accumulated_H = accumulated_H @ best_H
                 # transformations.append(accumulated_H.copy())
@@ -1217,8 +1268,13 @@ class StitchingNode(Node):
         panorama_list = []
         panorama_mask_list = []
         panorama_heatmap_list = []
+        image_centers = []
+        offsets_list = []
         for k in range(len(transformations)):
             group_corners = np.vstack(all_corners[k])
+
+            image_centers_in_current_panorama = []
+            current_masks = []
 
             x_min, y_min = np.floor(group_corners.min(axis=0)).astype(np.int32)
             x_max, y_max = np.ceil(group_corners.max(axis=0)).astype(np.int32)
@@ -1237,6 +1293,7 @@ class StitchingNode(Node):
 
             total_stitching = len(self.image_paths)
             stitch_count = 0
+            offsets_list.append((x_min, y_min))
 
             # Compute the translation matrix
             translation = np.array([[1, 0, -x_min],
@@ -1252,7 +1309,7 @@ class StitchingNode(Node):
             # Warp and blend each image using the original blending logic
             for i in range(len(transformations[k])):
                 stitch_count += 1
-                print(f"Stitching image {stitch_count}/{total_stitching}")
+                print(f"Stitching image {stitch_count}/{len(transformations[k])}")
 
                 # 1. Load image
                 rgb_image_cv = cv2.imread(self.image_paths[image_iter])
@@ -1286,6 +1343,9 @@ class StitchingNode(Node):
                 center_pan = (H_total @ center.T).flatten()
 
                 print(f"[Image {i}] center -> x: {float(center_pan[0]):.2f}, y: {float(center_pan[1]):.2f}")
+                print(f"Panorama size: width: {panorama_width}, height: {panorama_height}")
+
+                image_centers_in_current_panorama.append((center_pan[0], center_pan[1]))
 
                 # Warp the image
                 warped_image_i = cv2.warpPerspective(rgb_image_cropped, H_total, (panorama_width, panorama_height))
@@ -1301,36 +1361,98 @@ class StitchingNode(Node):
                 mask_i = np.ones((hi, wi), dtype=np.uint8) * 255
                 warped_mask_i = cv2.warpPerspective(mask_i, H_total, (panorama_width, panorama_height))
 
+                # For blending
+
+                dist_map = cv2.distanceTransform(warped_mask_i, cv2.DIST_L2, 5)
+
+                cv2.normalize(dist_map, dist_map, 0, 1.0, cv2.NORM_MINMAX)
+
+                alpha = cv2.merge([dist_map, dist_map, dist_map, dist_map])
+
                 # Update panorama and mask_panorama with original blending logic
                 mask_overlap = warped_mask_i > 0
                 # panorama[mask_overlap] = warped_image_i[mask_overlap]
                 # panorama_mask[mask_overlap] = warped_mask_image_i[mask_overlap]
                 # panorama_heatmap[mask_overlap] = warped_heatmap_image_i[mask_overlap]
 
-                panorama[mask_overlap, :3] = warped_image_i[mask_overlap, :3]
-                panorama[mask_overlap, 3] = 255
+                new_panorama_img_f = warped_image_i.astype(np.float32)
+                new_panorama_mask_img_f = warped_mask_image_i.astype(np.float32)
+                new_panorama_heatmap_img_f = warped_heatmap_image_i.astype(np.float32)
+                pano_f = panorama.astype(np.float32)
+                pano_mask_f = panorama_mask.astype(np.float32)
+                pano_heatmap_f = panorama_heatmap.astype(np.float32)
 
-                panorama_mask[mask_overlap, :3] = warped_mask_image_i[mask_overlap, :3]
-                panorama_mask[mask_overlap, 3] = 255
+                # Create a 'weight' for the existing panorama
+                # If pano is 0 (empty), we want weight to be 0 so the first image is opaque
+                # If pano has content, we blend based on the distance transform
+                pano_weight = np.where(panorama[..., 3:4] > 0, 1.0 - alpha, 0.0)
+                pano_mask_weight = np.where(panorama_mask[..., 3:4] > 0, 1.0 - alpha, 0.0)
+                pano_heatmap_weight = np.where(panorama_heatmap[..., 3:4] > 0, 1.0 - alpha, 0.0)
 
-                panorama_heatmap[mask_overlap, :3] = warped_heatmap_image_i[mask_overlap, :3]
-                panorama_heatmap[mask_overlap, 3] = 255
+                # The new image weight is just the alpha (distance transform)
+                # But where the panorama is empty, the new image should be 1.0 (fully opaque)
+                new_pano_weight = np.where(panorama[..., 3:4] > 0, alpha, 1.0)
+                new_pano_mask_weight = np.where(panorama_mask[..., 3:4] > 0, alpha, 1.0)
+                new_pano_heatmap_weight = np.where(panorama_heatmap[..., 3:4] > 0, alpha, 1.0)
+
+                # Normalize weights so they sum to 1.0 (prevents darkening)
+                sum_pano_weights = pano_weight + new_pano_weight
+                sum_pano_mask_weights = pano_mask_weight + new_pano_mask_weight
+                sum_pano_heatmap_weights = pano_heatmap_weight + new_pano_heatmap_weight
+                # Avoid division by zero
+                sum_pano_weights[sum_pano_weights == 0] = 1.0
+                sum_pano_mask_weights[sum_pano_mask_weights == 0] = 1.0
+                sum_pano_heatmap_weights[sum_pano_heatmap_weights == 0] = 1.0
+
+                # Apply the blend only to the overlapping area
+                panorama[mask_overlap] = (
+                    (pano_f[mask_overlap] * pano_weight[mask_overlap] + 
+                    new_panorama_img_f[mask_overlap] * new_pano_weight[mask_overlap]) / sum_pano_weights[mask_overlap]
+                ).astype(np.uint8)
+
+                panorama_mask[mask_overlap] = (
+                    (pano_mask_f[mask_overlap] * pano_mask_weight[mask_overlap] + 
+                    new_panorama_mask_img_f[mask_overlap] * new_pano_mask_weight[mask_overlap]) / sum_pano_mask_weights[mask_overlap]
+                ).astype(np.uint8)
+
+                panorama_heatmap[mask_overlap] = (
+                    (pano_heatmap_f[mask_overlap] * pano_heatmap_weight[mask_overlap] + 
+                    new_panorama_heatmap_img_f[mask_overlap] * new_pano_heatmap_weight[mask_overlap]) / sum_pano_heatmap_weights[mask_overlap]
+                ).astype(np.uint8)
+
+                current_masks.append(warped_mask_i)
+
+                # If we don't want blending, keep this and remove the blending logics above
+                # mask_overlap = warped_mask_i > 0
+                # current_masks.append(warped_mask_i)
+
+                # panorama[mask_overlap, :3] = warped_image_i[mask_overlap, :3]
+                # panorama[mask_overlap, 3] = 255
+
+                # panorama_mask[mask_overlap, :3] = warped_mask_image_i[mask_overlap, :3]
+                # panorama_mask[mask_overlap, 3] = 255
+
+                # panorama_heatmap[mask_overlap, :3] = warped_heatmap_image_i[mask_overlap, :3]
+                # panorama_heatmap[mask_overlap, 3] = 255
 
                 # Mask for masking panorama
-                mask_panorama[mask_overlap] = warped_mask_i[mask_overlap]
+                # mask_panorama[mask_overlap] = warped_mask_i[mask_overlap]
 
                 del rgb_image_cv, rgb_image_cropped, warped_image_i, mask_image_cv, mask_image_cropped, warped_mask_image_i, heatmap_image_cv, heatmap_image_cropped, warped_heatmap_image_i
                 gc.collect()
                 torch.cuda.empty_cache()
 
-                print(f"Stitched image {image_iter + 1} of {len(self.image_paths)}")
+                print(f"Stitched image {image_iter + 1} of {len(transformations[k])}")
                 image_iter += 1
+            print(f"Panorama size: width: {panorama_width}, height: {panorama_height}")
             panorama_list.append(panorama)
             panorama_mask_list.append(panorama_mask)
             panorama_heatmap_list.append(panorama_heatmap)
+            image_centers.append(image_centers_in_current_panorama)
+            self.panorama_masks.append(current_masks)
 
         print("Stitching completed.")
-        return panorama_list, panorama_mask_list, panorama_heatmap_list
+        return panorama_list, panorama_mask_list, panorama_heatmap_list, image_centers, offsets_list
 
 
 def main(args=None):
